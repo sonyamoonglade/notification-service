@@ -1,0 +1,10 @@
+[
+  {
+    "name": "order_created",
+    "translate": "Заказ создан"
+  },
+  {
+    "name": "worker_login",
+    "translate": "Воркер логин"
+  }
+]

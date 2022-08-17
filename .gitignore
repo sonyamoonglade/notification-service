@@ -1,0 +1,4 @@
+.idea
+.env.local
+.env.prod
+prod.config.yaml
