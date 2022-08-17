@@ -15,7 +15,7 @@ import (
 
 type Service interface {
 	ReadEvents(ctx context.Context) error
-	IsExists(ctx context.Context, eventName string) error
+	IsExists(ctx context.Context, eventName string) (uint64, error)
 	RegisterEvent(ctx context.Context, dto dto.RegisterEventDto) error
 }
 
@@ -71,15 +71,15 @@ func (s *eventService) ReadEvents(ctx context.Context) error {
 	return nil
 }
 
-func (s *eventService) IsExists(ctx context.Context, eventName string) error {
-	err := s.eventStorage.IsExist(ctx, eventName)
+func (s *eventService) IsExists(ctx context.Context, eventName string) (uint64, error) {
+	eventID, err := s.eventStorage.IsExist(ctx, eventName)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return httpErrors.NewErrEventDoesNotExist(eventName)
+			return 0, httpErrors.NewErrEventDoesNotExist(eventName)
 		}
-		return err
+		return 0, err
 	}
-	return nil
+	return eventID, nil
 }
 
 var path = "./events.json"

@@ -2,12 +2,13 @@ package subscription
 
 import (
 	"context"
+
 	"github.com/sonyamoonglade/notification-service/internal/entity"
 	"go.uber.org/zap"
 )
 
 type Service interface {
-	GetEventSubscribers(ctx context.Context, eventID uint64) ([]*entity.EventSubscriber, error)
+	GetEventSubscribers(ctx context.Context, eventID uint64) ([]*entity.Subscriber, error)
 }
 
 type subscriptionService struct {
@@ -19,7 +20,7 @@ func NewSubscriptionService(logger *zap.SugaredLogger, storage Storage) Service 
 	return &subscriptionService{logger: logger, storage: storage}
 }
 
-func (s *subscriptionService) GetEventSubscribers(ctx context.Context, eventID uint64) ([]*entity.EventSubscriber, error) {
+func (s *subscriptionService) GetEventSubscribers(ctx context.Context, eventID uint64) ([]*entity.Subscriber, error) {
 
 	return nil, nil
 }

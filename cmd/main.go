@@ -67,7 +67,7 @@ func main() {
 
 	subscriptionStorage := subscription.NewSubscriptionStorage(logger, pg.Pool)
 	subscriptionService := subscription.NewSubscriptionService(logger, subscriptionStorage)
-	subscriptionTransport := subscription.NewSubscriptionTransport(logger, subscriptionService, eventsMiddleware)
+	subscriptionTransport := subscription.NewSubscriptionTransport(logger, subscriptionService, eventsMiddleware, eventsService)
 
 	subscriptionTransport.InitRoutes(router)
 	logger.Info("initialized routes")

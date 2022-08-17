@@ -26,15 +26,17 @@ func (m *EventsMiddlewares) DoesEventExist(h httprouter.Handle) httprouter.Handl
 			return
 		}
 		ctx := r.Context()
-		if err := m.eventService.IsExists(ctx, eventName); err != nil {
+		eventID, err := m.eventService.IsExists(ctx, eventName)
+		if err != nil {
 			m.logger.Errorf("eventService.IsExists err. %s", err.Error())
 			httpErrors.MakeErrorResponse(w, err)
+			return
 		}
 
-		withv := context.WithValue(ctx, "eventName", eventName)
-		r.WithContext(withv)
+		withv := context.WithValue(ctx, "eventId", eventID)
 
-		h(w, r, params)
+		h(w, r.WithContext(withv), params)
 		return
+
 	}
 }
