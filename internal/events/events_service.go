@@ -2,9 +2,11 @@ package events
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/jackc/pgx/v4"
+	"github.com/sonyamoonglade/notification-service/internal/entity"
+	"github.com/sonyamoonglade/notification-service/internal/events/dto"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
 	"go.uber.org/zap"
 	"io"
@@ -12,8 +14,9 @@ import (
 )
 
 type Service interface {
-	ReadEvents() error
+	ReadEvents(ctx context.Context) error
 	IsExists(ctx context.Context, eventName string) error
+	RegisterEvent(ctx context.Context, dto dto.RegisterEventDto) error
 }
 
 type eventService struct {
@@ -25,7 +28,11 @@ func NewEventsService(logger *zap.SugaredLogger, storage Storage) Service {
 	return &eventService{logger: logger, eventStorage: storage}
 }
 
-func (s *eventService) ReadEvents() error {
+func (s *eventService) RegisterEvent(ctx context.Context, dto dto.RegisterEventDto) error {
+	return s.eventStorage.RegisterEvent(ctx, dto)
+}
+
+func (s *eventService) ReadEvents(ctx context.Context) error {
 	_, err := os.Stat(path)
 	if err != nil {
 		return err
@@ -35,14 +42,32 @@ func (s *eventService) ReadEvents() error {
 	if err != nil {
 		return err
 	}
+	defer file.Close()
+
+	var content entity.Events
 
 	bytes, err := io.ReadAll(file)
 	if err != nil {
 		return err
 	}
 
-	content := string(bytes)
-	fmt.Println(content)
+	if err := json.Unmarshal(bytes, &content); err != nil {
+		return err
+	}
+
+	for _, e := range content.Events {
+		evDto := dto.RegisterEventDto{
+			Name:      e.Name,
+			Translate: e.Translate,
+		}
+		err := s.RegisterEvent(ctx, evDto)
+		if err != nil {
+			s.logger.Errorf("could not register base event. %s", err.Error())
+			return err
+		}
+		s.logger.Infof("event %s is ready to be fired", e.Name)
+	}
+
 	return nil
 }
 

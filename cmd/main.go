@@ -72,6 +72,9 @@ func main() {
 	subscriptionTransport.InitRoutes(router)
 	logger.Info("initialized routes")
 
+	if err = eventsService.ReadEvents(ctx); err != nil {
+		logger.Fatalf("could not load base events. %s", err.Error())
+	}
 	go func() {
 		err := srv.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
