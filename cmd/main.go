@@ -89,6 +89,7 @@ func main() {
 	//Time to shutdown gracefully
 	gctx, gcancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer func() {
+		pg.CloseConn()
 		gcancel()
 	}()
 
