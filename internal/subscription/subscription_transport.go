@@ -2,12 +2,17 @@ package subscription
 
 import (
 	"net/http"
+	"reflect"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/sonyamoonglade/delivery-service/pkg/binder"
 	"github.com/sonyamoonglade/notification-service/internal/events"
 	"github.com/sonyamoonglade/notification-service/internal/events/middleware"
+	"github.com/sonyamoonglade/notification-service/internal/events/payload"
 	"github.com/sonyamoonglade/notification-service/pkg/bot"
+	"github.com/sonyamoonglade/notification-service/pkg/formatter"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
+	"github.com/sonyamoonglade/notification-service/pkg/httpRes"
 	"github.com/sonyamoonglade/notification-service/pkg/telegram"
 	"github.com/sonyamoonglade/notification-service/pkg/template"
 	"go.uber.org/zap"
@@ -15,6 +20,7 @@ import (
 
 type Transport interface {
 	Fire(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
+	Subscribe(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	InitRoutes(router *httprouter.Router)
 }
 
@@ -23,6 +29,7 @@ type subscriptionTransport struct {
 	telegramService     telegram.Service
 	eventsService       events.Service
 	templateProvider    template.Provider
+	formatter           formatter.Formatter
 	logger              *zap.SugaredLogger
 	eventsMiddlewares   *middleware.EventsMiddlewares
 	bot                 bot.Bot
@@ -38,6 +45,7 @@ func NewSubscriptionTransport(logger *zap.SugaredLogger,
 	eventsService events.Service,
 	telegramService telegram.Service,
 	templateProvider template.Provider,
+	formatter formatter.Formatter,
 	bot bot.Bot) Transport {
 
 	return &subscriptionTransport{
@@ -48,12 +56,14 @@ func NewSubscriptionTransport(logger *zap.SugaredLogger,
 		telegramService:     telegramService,
 		templateProvider:    templateProvider,
 		bot:                 bot,
+		formatter:           formatter,
 	}
 }
 
 func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := r.Context()
 	eventID := ctx.Value("eventId").(uint64)
+
 	subscribers, err := s.subscriptionService.GetEventSubscribers(ctx, eventID)
 	if err != nil {
 		httpErrors.MakeErrorResponse(w, err)
@@ -61,6 +71,13 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
+	if len(subscribers) == 0 {
+		httpRes.NoSubscribers(w)
+		s.logger.Debugf("no subscribers for event %d", eventID)
+		return
+	}
+
+	//todo: move to service
 	var subscriberPhones []string
 	for _, s := range subscribers {
 		subscriberPhones = append(subscriberPhones, s.PhoneNumber)
@@ -79,11 +96,36 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		s.logger.Error(err.Error())
 		return
 	}
+	//templ will be formatted into fmtTempl passing ...args in below switch-case
+	var fmtTempl string
 
-	for _, telegramSubID := range telegramIDs {
-		//s.bot.Notify(telegramSubID)
-		_ = telegramSubID
-		_ = templ
+	//Find payload type assigned to eventID
+	//todo: move to service
+	payloadType := payload.GetProvider().MustGetType(eventID)
+
+	//todo: move to service
+	switch payloadType {
+	case reflect.TypeOf(payload.WorkerLoginPayload{}):
+		var shouldBind payload.WorkerLoginPayload
+		err := binder.Bind(r.Body, &shouldBind)
+		if err != nil {
+			httpErrors.MakeErrorResponse(w, err)
+		}
+		fmtTempl = s.formatter.Format(templ, shouldBind.Username, shouldBind.LoginAt)
 	}
+
+	for _, tgSub := range telegramIDs {
+		//Notify subscribers in telegram here with fmtTempl text
+		err := s.bot.Notify(tgSub.TelegramID, fmtTempl)
+		if err != nil {
+			//todo: if err occurs there bot must send warning msg to admin
+			httpErrors.MakeErrorResponse(w, err)
+			return
+		}
+	}
+
+}
+
+func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 }

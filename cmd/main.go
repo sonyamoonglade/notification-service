@@ -17,6 +17,7 @@ import (
 	"github.com/sonyamoonglade/notification-service/internal/events/middleware"
 	"github.com/sonyamoonglade/notification-service/internal/subscription"
 	"github.com/sonyamoonglade/notification-service/pkg/bot"
+	"github.com/sonyamoonglade/notification-service/pkg/formatter"
 	"github.com/sonyamoonglade/notification-service/pkg/postgres"
 	"github.com/sonyamoonglade/notification-service/pkg/server"
 	"github.com/sonyamoonglade/notification-service/pkg/telegram"
@@ -70,6 +71,7 @@ func main() {
 		logger.Fatalf("could not create bot instance. %s", err.Error())
 	}
 
+	appFmt := formatter.NewFormatter()
 	templateProvider := template.NewTemplateProvider()
 
 	//Read templates.json
@@ -93,6 +95,7 @@ func main() {
 		eventsService,
 		telegramService,
 		templateProvider,
+		appFmt,
 		appBot)
 
 	subscriptionTransport.InitRoutes(router)
