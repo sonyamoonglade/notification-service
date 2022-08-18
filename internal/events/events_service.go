@@ -11,6 +11,7 @@ import (
 	"github.com/sonyamoonglade/notification-service/internal/entity"
 	"github.com/sonyamoonglade/notification-service/internal/events/payload"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
+	"github.com/sonyamoonglade/notification-service/pkg/template"
 
 	"go.uber.org/zap"
 )
@@ -24,12 +25,13 @@ type Service interface {
 }
 
 type eventService struct {
-	eventStorage Storage
-	logger       *zap.SugaredLogger
+	eventStorage     Storage
+	logger           *zap.SugaredLogger
+	templateProvider template.Provider
 }
 
-func NewEventsService(logger *zap.SugaredLogger, storage Storage) Service {
-	return &eventService{logger: logger, eventStorage: storage}
+func NewEventsService(logger *zap.SugaredLogger, storage Storage, templateProvider template.Provider) Service {
+	return &eventService{logger: logger, eventStorage: storage, templateProvider: templateProvider}
 }
 
 func (s *eventService) RegisterEvent(ctx context.Context, e entity.Event) error {
@@ -71,7 +73,15 @@ func (s *eventService) ReadEvents(ctx context.Context) error {
 			return err
 		}
 		s.logger.Infof("payload for event %d is ok", e.EventID)
-		//Only then register it/prepare to be fired
+
+		//Check if the developer prepared a template in templates.json for event in events.json
+		_, err = s.templateProvider.Find(e.EventID)
+		if err != nil {
+			return err
+		}
+		s.logger.Infof("template for event %d is ok", e.EventID)
+
+		//Register/justify event to be fired
 		err = s.RegisterEvent(ctx, event)
 		if err != nil {
 			s.logger.Errorf("could not register base event. %s", err.Error())

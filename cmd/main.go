@@ -72,12 +72,17 @@ func main() {
 
 	templateProvider := template.NewTemplateProvider()
 
+	//Read templates.json
+	if err = templateProvider.ReadTemplates(); err != nil {
+		logger.Fatalf("could not read templates. %s", err.Error())
+	}
+
 	telegramStorage := telegram.NewTelegramStorage(logger, pg.Pool)
 	telegramService := telegram.NewTelegramService(logger, telegramStorage)
 	telegramListener := telegram.NewTelegramListener(logger, appBot)
 
 	eventsStorage := events.NewEventStorage(logger, pg.Pool)
-	eventsService := events.NewEventsService(logger, eventsStorage)
+	eventsService := events.NewEventsService(logger, eventsStorage, templateProvider)
 	eventsMiddleware := middleware.NewEventsMiddlewares(logger, eventsService)
 
 	subscriptionStorage := subscription.NewSubscriptionStorage(logger, pg.Pool)
@@ -93,6 +98,7 @@ func main() {
 	subscriptionTransport.InitRoutes(router)
 	logger.Info("initialized routes")
 
+	//Read events.json
 	if err = eventsService.ReadEvents(ctx); err != nil {
 		logger.Fatalf("could not load base events. %s", err.Error())
 	}

@@ -22,7 +22,7 @@ type subscriptionTransport struct {
 	subscriptionService Service
 	telegramService     telegram.Service
 	eventsService       events.Service
-	templateProvider    template.TemplateProvider
+	templateProvider    template.Provider
 	logger              *zap.SugaredLogger
 	eventsMiddlewares   *middleware.EventsMiddlewares
 	bot                 bot.Bot
@@ -37,7 +37,7 @@ func NewSubscriptionTransport(logger *zap.SugaredLogger,
 	eventMiddlewares *middleware.EventsMiddlewares,
 	eventsService events.Service,
 	telegramService telegram.Service,
-	templateProvider template.TemplateProvider,
+	templateProvider template.Provider,
 	bot bot.Bot) Transport {
 
 	return &subscriptionTransport{
