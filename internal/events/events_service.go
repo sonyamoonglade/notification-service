@@ -4,19 +4,23 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/jackc/pgx/v4"
-	"github.com/sonyamoonglade/notification-service/internal/entity"
-	"github.com/sonyamoonglade/notification-service/internal/events/dto"
-	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
-	"go.uber.org/zap"
 	"io"
 	"os"
+
+	"github.com/jackc/pgx/v4"
+	"github.com/sonyamoonglade/notification-service/internal/entity"
+	"github.com/sonyamoonglade/notification-service/internal/events/payload"
+	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
+
+	"go.uber.org/zap"
 )
+
+var path = "./events.json"
 
 type Service interface {
 	ReadEvents(ctx context.Context) error
 	IsExists(ctx context.Context, eventName string) (uint64, error)
-	RegisterEvent(ctx context.Context, dto dto.RegisterEventDto) error
+	RegisterEvent(ctx context.Context, e entity.Event) error
 }
 
 type eventService struct {
@@ -28,8 +32,8 @@ func NewEventsService(logger *zap.SugaredLogger, storage Storage) Service {
 	return &eventService{logger: logger, eventStorage: storage}
 }
 
-func (s *eventService) RegisterEvent(ctx context.Context, dto dto.RegisterEventDto) error {
-	return s.eventStorage.RegisterEvent(ctx, dto)
+func (s *eventService) RegisterEvent(ctx context.Context, e entity.Event) error {
+	return s.eventStorage.RegisterEvent(ctx, e)
 }
 
 func (s *eventService) ReadEvents(ctx context.Context) error {
@@ -56,11 +60,19 @@ func (s *eventService) ReadEvents(ctx context.Context) error {
 	}
 
 	for _, e := range content.Events {
-		evDto := dto.RegisterEventDto{
+		event := entity.Event{
+			EventID:   e.EventID,
 			Name:      e.Name,
 			Translate: e.Translate,
 		}
-		err := s.RegisterEvent(ctx, evDto)
+		//Check if the developer assigned payload for event registered in events.json
+		_, err := payload.GetProvider().GetType(e.EventID)
+		if err != nil {
+			return err
+		}
+		s.logger.Infof("payload for event %d is ok", e.EventID)
+		//Only then register it/prepare to be fired
+		err = s.RegisterEvent(ctx, event)
 		if err != nil {
 			s.logger.Errorf("could not register base event. %s", err.Error())
 			return err
@@ -81,5 +93,3 @@ func (s *eventService) IsExists(ctx context.Context, eventName string) (uint64, 
 	}
 	return eventID, nil
 }
-
-var path = "./events.json"

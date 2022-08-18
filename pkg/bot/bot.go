@@ -1,13 +1,11 @@
 package bot
 
 import (
+	"fmt"
+
 	tg "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.uber.org/zap"
 )
-
-type Config struct {
-	BotToken string
-}
 
 type Bot interface {
 	Notify(receiverID int64, fmtTempl string) error
@@ -21,9 +19,9 @@ type bot struct {
 	updateCfg tg.UpdateConfig
 }
 
-func NewBot(cfg Config, logger *zap.SugaredLogger) (Bot, error) {
+func NewBot(token string, logger *zap.SugaredLogger) (Bot, error) {
 
-	client, err := tg.NewBotAPI(cfg.BotToken)
+	client, err := tg.NewBotAPI(token)
 	if err != nil {
 		return nil, err
 	}
@@ -41,8 +39,15 @@ func NewBot(cfg Config, logger *zap.SugaredLogger) (Bot, error) {
 }
 
 func (b *bot) Notify(receiverID int64, fmtTempl string) error {
-	//TODO implement me
-	panic("implement me")
+	msg := tg.NewMessage(receiverID, fmtTempl)
+
+	_, err := b.send(msg)
+	if err != nil {
+		return err
+	}
+
+	b.logger.Debugf("notified %d successfully", receiverID)
+	return nil
 }
 
 func (b *bot) GetClient() *tg.BotAPI {
@@ -52,4 +57,11 @@ func (b *bot) GetClient() *tg.BotAPI {
 func (b *bot) GetUpdatesCfg() tg.UpdateConfig {
 	return b.updateCfg
 
+}
+func (b *bot) send(ch tg.Chattable) (*tg.Message, error) {
+	m, err := b.client.Send(ch)
+	if err != nil {
+		return nil, fmt.Errorf("bot could not send a message. %s", err.Error())
+	}
+	return &m, nil
 }

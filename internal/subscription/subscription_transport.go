@@ -6,6 +6,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/sonyamoonglade/notification-service/internal/events"
 	"github.com/sonyamoonglade/notification-service/internal/events/middleware"
+	"github.com/sonyamoonglade/notification-service/pkg/bot"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
 	"github.com/sonyamoonglade/notification-service/pkg/telegram"
 	"github.com/sonyamoonglade/notification-service/pkg/template"
@@ -24,10 +25,10 @@ type subscriptionTransport struct {
 	templateProvider    template.TemplateProvider
 	logger              *zap.SugaredLogger
 	eventsMiddlewares   *middleware.EventsMiddlewares
+	bot                 bot.Bot
 }
 
 func (s *subscriptionTransport) InitRoutes(router *httprouter.Router) {
-
 	router.POST("/api/events/fire/:eventName", s.eventsMiddlewares.DoesEventExist(s.Fire))
 }
 
@@ -36,7 +37,8 @@ func NewSubscriptionTransport(logger *zap.SugaredLogger,
 	eventMiddlewares *middleware.EventsMiddlewares,
 	eventsService events.Service,
 	telegramService telegram.Service,
-	templateProvider template.TemplateProvider) Transport {
+	templateProvider template.TemplateProvider,
+	bot bot.Bot) Transport {
 
 	return &subscriptionTransport{
 		logger:              logger,
@@ -45,6 +47,7 @@ func NewSubscriptionTransport(logger *zap.SugaredLogger,
 		eventsService:       eventsService,
 		telegramService:     telegramService,
 		templateProvider:    templateProvider,
+		bot:                 bot,
 	}
 }
 
@@ -70,7 +73,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
-	template, err := s.templateProvider.Find(eventID)
+	templ, err := s.templateProvider.Find(eventID)
 	if err != nil {
 		httpErrors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
@@ -78,7 +81,9 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 	}
 
 	for _, telegramSubID := range telegramIDs {
-
+		//s.bot.Notify(telegramSubID)
+		_ = telegramSubID
+		_ = templ
 	}
 
 }

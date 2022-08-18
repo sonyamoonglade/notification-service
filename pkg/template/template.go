@@ -18,6 +18,10 @@ type templateProvider struct {
 	store map[uint64]string
 }
 
+func NewTemplateProvider() TemplateProvider {
+	return &templateProvider{store: make(map[uint64]string)}
+}
+
 func (t *templateProvider) Find(eventID uint64) (string, error) {
 	templ, ok := t.store[eventID]
 	if ok != true {

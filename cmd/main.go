@@ -3,21 +3,25 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/joho/godotenv"
-	"github.com/sonyamoonglade/delivery-service/pkg/logging"
-	"github.com/sonyamoonglade/notification-service/config"
-	"github.com/sonyamoonglade/notification-service/internal/events"
-	"github.com/sonyamoonglade/notification-service/internal/events/middleware"
-	"github.com/sonyamoonglade/notification-service/internal/subscription"
-	"github.com/sonyamoonglade/notification-service/pkg/postgres"
-	"github.com/sonyamoonglade/notification-service/pkg/server"
-	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/joho/godotenv"
+	"github.com/sonyamoonglade/delivery-service/pkg/logging"
+	"github.com/sonyamoonglade/notification-service/config"
+	"github.com/sonyamoonglade/notification-service/internal/events"
+	"github.com/sonyamoonglade/notification-service/internal/events/middleware"
+	"github.com/sonyamoonglade/notification-service/internal/subscription"
+	"github.com/sonyamoonglade/notification-service/pkg/bot"
+	"github.com/sonyamoonglade/notification-service/pkg/postgres"
+	"github.com/sonyamoonglade/notification-service/pkg/server"
+	"github.com/sonyamoonglade/notification-service/pkg/telegram"
+	"github.com/sonyamoonglade/notification-service/pkg/template"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -61,13 +65,30 @@ func main() {
 
 	srv, router := server.NewServer(&appCfg)
 
+	appBot, err := bot.NewBot(appCfg.BotToken, logger)
+	if err != nil {
+		logger.Fatalf("could not create bot instance. %s", err.Error())
+	}
+
+	templateProvider := template.NewTemplateProvider()
+
+	telegramStorage := telegram.NewTelegramStorage(logger, pg.Pool)
+	telegramService := telegram.NewTelegramService(logger, telegramStorage)
+	telegramListener := telegram.NewTelegramListener(logger, appBot)
+
 	eventsStorage := events.NewEventStorage(logger, pg.Pool)
 	eventsService := events.NewEventsService(logger, eventsStorage)
 	eventsMiddleware := middleware.NewEventsMiddlewares(logger, eventsService)
 
 	subscriptionStorage := subscription.NewSubscriptionStorage(logger, pg.Pool)
 	subscriptionService := subscription.NewSubscriptionService(logger, subscriptionStorage)
-	subscriptionTransport := subscription.NewSubscriptionTransport(logger, subscriptionService, eventsMiddleware, eventsService)
+	subscriptionTransport := subscription.NewSubscriptionTransport(logger,
+		subscriptionService,
+		eventsMiddleware,
+		eventsService,
+		telegramService,
+		templateProvider,
+		appBot)
 
 	subscriptionTransport.InitRoutes(router)
 	logger.Info("initialized routes")
@@ -75,6 +96,10 @@ func main() {
 	if err = eventsService.ReadEvents(ctx); err != nil {
 		logger.Fatalf("could not load base events. %s", err.Error())
 	}
+
+	go telegramListener.ListenForUpdates()
+	logger.Info("notification bot it listening to updates and ready to notify")
+
 	go func() {
 		err := srv.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {

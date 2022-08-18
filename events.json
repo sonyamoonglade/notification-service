@@ -1,10 +1,12 @@
 {
   "events": [
     {
+      "event_id": 1,
       "name": "order_created",
       "translate": "Заказ создан"
     },
     {
+      "event_id": 2,
       "name": "worker_login",
       "translate": "Воркер логин"
     }
