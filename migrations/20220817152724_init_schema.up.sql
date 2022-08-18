@@ -1,6 +1,6 @@
 
 CREATE TABLE IF NOT EXISTS "events"(
-    "event_id" SERIAL PRIMARY KEY,
+    "event_id" INTEGER PRIMARY KEY UNIQUE NOT NULL,
     "name" varchar(255) UNIQUE NOT NULL,
     "translate" varchar(255) UNIQUE NOT NULL
  );
