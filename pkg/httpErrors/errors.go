@@ -12,9 +12,12 @@ var ErrInvalidEventId = errors.New("invalid eventId format")
 var InternalError = errors.New("internal error")
 var MissingTemplateServiceUnavailable = errors.New("service is unavailable due to missing template")
 var InvalidPayload = errors.New("invalid payload")
+var SubscriberDoesNotExist = errors.New("subscriber does not exist")
+var SubscriptionDoesNotExist = errors.New("subscription does not exist")
+var SubscriptionAlreadyExists = errors.New("subscription already exists")
 
-func NewErrEventDoesNotExist(eventName string) error {
-	return errors.New(fmt.Sprintf("event with name %s does not exist", eventName))
+func NewErrEventDoesNotExist(eventID uint64) error {
+	return errors.New(fmt.Sprintf("event with id %d does not exist", eventID))
 }
 
 func MakeErrorResponse(w http.ResponseWriter, err error) {
@@ -31,6 +34,12 @@ func MakeErrorResponse(w http.ResponseWriter, err error) {
 		return
 	case strings.Contains(err.Error(), "Validation"):
 		http.Error(w, InvalidPayload.Error(), http.StatusBadRequest)
+		return
+	case strings.Contains(err.Error(), "already exists"):
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	case strings.Contains(err.Error(), "does not exist"):
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	default:
 		http.Error(w, InternalError.Error(), http.StatusInternalServerError)

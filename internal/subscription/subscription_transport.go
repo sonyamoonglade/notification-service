@@ -1,14 +1,19 @@
 package subscription
 
 import (
+	"context"
 	"net/http"
 	"reflect"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/pkg/errors"
 	"github.com/sonyamoonglade/delivery-service/pkg/binder"
+	"github.com/sonyamoonglade/notification-service/internal/entity"
 	"github.com/sonyamoonglade/notification-service/internal/events"
 	"github.com/sonyamoonglade/notification-service/internal/events/middleware"
 	"github.com/sonyamoonglade/notification-service/internal/events/payload"
+	"github.com/sonyamoonglade/notification-service/internal/subscription/dto"
 	"github.com/sonyamoonglade/notification-service/pkg/bot"
 	"github.com/sonyamoonglade/notification-service/pkg/formatter"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
@@ -36,7 +41,8 @@ type subscriptionTransport struct {
 }
 
 func (s *subscriptionTransport) InitRoutes(router *httprouter.Router) {
-	router.POST("/api/events/fire/:eventName", s.eventsMiddlewares.DoesEventExist(s.Fire))
+	router.GET("/api/events/fire/:event_id", s.eventsMiddlewares.DoesEventExist(s.Fire))
+	router.POST("/api/subscriptions", s.Subscribe)
 }
 
 func NewSubscriptionTransport(logger *zap.SugaredLogger,
@@ -124,8 +130,65 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		}
 	}
 
+	httpRes.Ok(w)
+	return
 }
 
 func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
+	var inp dto.SubscribeToEventInp
+
+	ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
+	defer cancel()
+
+	err := binder.Bind(r.Body, &inp)
+	if err != nil {
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Error(err.Error())
+		return
+	}
+
+	err = s.eventsService.DoesExist(ctx, inp.EventID)
+	if err != nil {
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Error(err.Error())
+		return
+	}
+
+	subscriber, err := s.subscriptionService.GetSubscriberByPhone(ctx, inp.PhoneNumber)
+	if err != nil {
+		s.logger.Errorf("HERE %s", err.Error())
+		//If any internal error not SubscriberDoesNotExist
+		if !errors.Is(err, httpErrors.SubscriberDoesNotExist) {
+			httpErrors.MakeErrorResponse(w, err)
+			s.logger.Error(err.Error())
+			return
+		}
+		//Register subscriber
+		regSubID, err := s.subscriptionService.RegisterSubscriber(ctx, inp.PhoneNumber)
+		if err != nil {
+			httpErrors.MakeErrorResponse(w, err)
+			s.logger.Error(err.Error())
+			return
+		}
+		s.logger.Debug("registered subscriber")
+		//Assign newly registered regSubID and phoneNumber to subscriber
+		regSub := entity.Subscriber{
+			SubscriberID: regSubID,
+			PhoneNumber:  inp.PhoneNumber,
+		}
+		subscriber = &regSub
+	}
+
+	//Create subscription
+	err = s.subscriptionService.SubscribeToEvent(ctx, subscriber.SubscriberID, inp.EventID)
+	if err != nil {
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Error(err.Error())
+		return
+	}
+	s.logger.Debugf("subscriber with phone %s has subscribed to event %d", inp.PhoneNumber, inp.EventID)
+
+	httpRes.Created(w)
+	return
 }

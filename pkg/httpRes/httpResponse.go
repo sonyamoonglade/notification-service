@@ -9,3 +9,13 @@ func NoSubscribers(w http.ResponseWriter) {
 	w.Write([]byte(msg))
 	return
 }
+
+func Ok(w http.ResponseWriter) {
+	w.WriteHeader(200)
+	return
+}
+
+func Created(w http.ResponseWriter) {
+	w.WriteHeader(201)
+	return
+}

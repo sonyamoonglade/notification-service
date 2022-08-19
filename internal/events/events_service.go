@@ -3,11 +3,9 @@ package events
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"os"
 
-	"github.com/jackc/pgx/v4"
 	"github.com/sonyamoonglade/notification-service/internal/entity"
 	"github.com/sonyamoonglade/notification-service/internal/events/payload"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
@@ -20,7 +18,7 @@ var path = "./events.json"
 
 type Service interface {
 	ReadEvents(ctx context.Context) error
-	IsExists(ctx context.Context, eventName string) (uint64, error)
+	DoesExist(ctx context.Context, eventID uint64) error
 	RegisterEvent(ctx context.Context, e entity.Event) error
 }
 
@@ -93,13 +91,13 @@ func (s *eventService) ReadEvents(ctx context.Context) error {
 	return nil
 }
 
-func (s *eventService) IsExists(ctx context.Context, eventName string) (uint64, error) {
-	eventID, err := s.eventStorage.IsExist(ctx, eventName)
+func (s *eventService) DoesExist(ctx context.Context, eventID uint64) error {
+	ok, err := s.eventStorage.DoesExist(ctx, eventID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, httpErrors.NewErrEventDoesNotExist(eventName)
-		}
-		return 0, err
+		return err
 	}
-	return eventID, nil
+	if ok != true {
+		return httpErrors.NewErrEventDoesNotExist(eventID)
+	}
+	return nil
 }
