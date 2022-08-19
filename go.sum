@@ -287,8 +287,8 @@ github.com/shopspring/decimal v1.2.0 h1:abSATXmQEYyShuxI4/vyW3tV1MrKAJzCZ/0zLUXY
 github.com/shopspring/decimal v1.2.0/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFRcu2hWCYk4o=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
-github.com/sonyamoonglade/delivery-service v0.0.0-20220817111310-c9cf334d21df h1:qG/E+spBmpAICKvsrS4lGW7hhm6gGPXpGl8GUmnEb+Y=
-github.com/sonyamoonglade/delivery-service v0.0.0-20220817111310-c9cf334d21df/go.mod h1:8gdRe975JyU5QrBekJW1w4dDs343ZgO64iTqHDS4xEs=
+github.com/sonyamoonglade/delivery-service v0.0.0-20220819180639-69fdee262086 h1:26lRF7xr7W96LVgwqVwlFOVBEYyYNoLsJlo6t+IGgY0=
+github.com/sonyamoonglade/delivery-service v0.0.0-20220819180639-69fdee262086/go.mod h1:8gdRe975JyU5QrBekJW1w4dDs343ZgO64iTqHDS4xEs=
 github.com/spf13/afero v1.9.2 h1:j49Hj62F0n+DaZ1dDCvhABaPNSGNkt32oRFxI33IEMw=
 github.com/spf13/afero v1.9.2/go.mod h1:iUV7ddyEEZPO5gA3zD4fJt6iStLlL+Lg4m2cihcDf8Y=
 github.com/spf13/cast v1.5.0 h1:rj3WzYc11XZaIZMPKmwP96zkFEnnAmV8s6XbB2aY32w=

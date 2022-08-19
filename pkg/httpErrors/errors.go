@@ -34,6 +34,9 @@ func MakeErrorResponse(w http.ResponseWriter, err error) {
 	case strings.Contains(err.Error(), "template for event"):
 		http.Error(w, ErrMissingTemplateServiceUnavailable.Error(), http.StatusServiceUnavailable)
 		return
+	case strings.Contains(err.Error(), "Bad request"):
+		http.Error(w, ErrInvalidPayload.Error(), http.StatusBadRequest)
+		return
 	case strings.Contains(err.Error(), "Validation"):
 		http.Error(w, ErrInvalidPayload.Error(), http.StatusBadRequest)
 		return

@@ -9,10 +9,11 @@ require (
 	github.com/joho/godotenv v1.4.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/pkg/errors v0.9.1
-	github.com/sonyamoonglade/delivery-service v0.0.0-20220817111310-c9cf334d21df
 	github.com/spf13/viper v1.12.0
 	go.uber.org/zap v1.21.0
 )
+
+require github.com/sonyamoonglade/delivery-service v0.0.0-20220819180639-69fdee262086
 
 require (
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
