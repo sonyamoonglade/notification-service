@@ -26,8 +26,6 @@ func NewBot(token string, logger *zap.SugaredLogger) (Bot, error) {
 		return nil, err
 	}
 
-	client.Debug = true
-
 	updateCfg := tg.NewUpdate(0)
 	updateCfg.Timeout = 60
 

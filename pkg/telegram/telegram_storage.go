@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/georgysavva/scany/pgxscan"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/pkg/errors"
 	"github.com/sonyamoonglade/notification-service/internal/entity"
+	"github.com/sonyamoonglade/notification-service/pkg/tables"
 	"go.uber.org/zap"
-)
-
-const (
-	TelegramSubscribersTable = "telegram_subscribers"
 )
 
 type Storage interface {
@@ -30,31 +30,32 @@ func (s *telegramStorage) GetTelegramSubscribers(ctx context.Context, phoneNumbe
 	whereq := ""
 	for i, ph := range phoneNumbers {
 		if i != len(phoneNumbers)-1 {
-			whereq += fmt.Sprintf("phone_number = '%s' or", ph)
+			whereq += fmt.Sprintf("sub.phone_number = '%s' or", ph)
 		} else {
-			whereq += fmt.Sprintf("phone_number = '%s'", ph)
+			whereq += fmt.Sprintf("sub.phone_number = '%s'", ph)
 		}
 	}
 
-	mainq := fmt.Sprintf("SELECT * FROM %s WHERE %s", TelegramSubscribersTable, whereq)
+	mainq := fmt.Sprintf(
+		"SELECT * FROM %s tgsub JOIN %s sub ON tgsub.subscriber_id = sub.subscriber_id WHERE %s",
+		tables.TelegramSubscribersTable, tables.SubscribersTable, whereq)
 
 	rows, err := s.pool.Query(ctx, mainq)
-	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
 
 	var telegramSubs []*entity.TelegramSubscriber
 
-	for rows.Next() {
-		var telegramSub entity.TelegramSubscriber
-		err := rows.Scan(&telegramSub)
-		if err != nil {
-			return nil, err
+	err = pgxscan.ScanAll(&telegramSubs, rows)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
 		}
-		telegramSubs = append(telegramSubs, &telegramSub)
+		return nil, err
 	}
 
+	defer rows.Close()
 	return telegramSubs, nil
 
 }

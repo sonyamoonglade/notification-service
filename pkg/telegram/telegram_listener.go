@@ -40,6 +40,7 @@ func (t *telegramListener) mapUpdate(upd *tg.Update) {
 
 func (t *telegramListener) ListenForUpdates() {
 	cl := t.bot.GetClient()
+
 	cfg := t.bot.GetUpdatesCfg()
 	updch := cl.GetUpdatesChan(cfg)
 	for upd := range updch {

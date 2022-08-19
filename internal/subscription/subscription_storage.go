@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
 	"github.com/sonyamoonglade/notification-service/internal/entity"
+	"github.com/sonyamoonglade/notification-service/pkg/tables"
 	"go.uber.org/zap"
 )
 
@@ -25,18 +26,16 @@ type subscriptionStorage struct {
 	logger *zap.SugaredLogger
 }
 
-const (
-	SubscribersTable   = "subscribers"
-	SubscriptionsTable = "subscriptions"
-)
-
 func NewSubscriptionStorage(logger *zap.SugaredLogger, pool *pgxpool.Pool) Storage {
 	return &subscriptionStorage{pool: pool, logger: logger}
 }
 
 func (s *subscriptionStorage) SubscribeToEvent(ctx context.Context, subscriberID uint64, eventID uint64) (uint64, error) {
 	var subscriptionID uint64
-	q := fmt.Sprintf("INSERT INTO %s (subscriber_id, event_id) VALUES ($1,$2) ON CONFLICT DO NOTHING RETURNING subscription_id", SubscriptionsTable)
+	q := fmt.Sprintf(
+		"INSERT INTO %s (subscriber_id, event_id) VALUES ($1,$2) ON CONFLICT DO NOTHING RETURNING subscription_id",
+		tables.SubscriptionsTable)
+
 	err := s.pool.QueryRow(ctx, q, subscriberID, eventID).Scan(&subscriptionID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -52,7 +51,7 @@ func (s *subscriptionStorage) SubscribeToEvent(ctx context.Context, subscriberID
 
 func (s *subscriptionStorage) GetSubscription(ctx context.Context, subscriberID uint64, eventID uint64) (*entity.Subscription, error) {
 	var sub entity.Subscription
-	q := fmt.Sprintf("SELECT * FROM %s WHERE subscriber_id = $1 AND event_id = $2", SubscriptionsTable)
+	q := fmt.Sprintf("SELECT * FROM %s WHERE subscriber_id = $1 AND event_id = $2", tables.SubscriptionsTable)
 	rows, err := s.pool.Query(ctx, q, subscriberID, eventID)
 	if err != nil {
 		return nil, err
@@ -69,7 +68,7 @@ func (s *subscriptionStorage) GetSubscription(ctx context.Context, subscriberID 
 
 func (s *subscriptionStorage) RegisterSubscriber(ctx context.Context, phoneNumber string) (uint64, error) {
 	var subscriberID uint64
-	q := fmt.Sprintf("INSERT INTO %s (phone_number) VALUES ($1) RETURNING subscriber_id", SubscribersTable)
+	q := fmt.Sprintf("INSERT INTO %s (phone_number) VALUES ($1) RETURNING subscriber_id", tables.SubscribersTable)
 	err := s.pool.QueryRow(ctx, q, phoneNumber).Scan(&subscriberID)
 	if err != nil {
 		return 0, err
@@ -80,8 +79,8 @@ func (s *subscriptionStorage) RegisterSubscriber(ctx context.Context, phoneNumbe
 func (s *subscriptionStorage) GetEventSubscribers(ctx context.Context, eventID uint64) ([]*entity.Subscriber, error) {
 	var subs []*entity.Subscriber
 	q := fmt.Sprintf(
-		`SELECT * FROM %s sub JOIN %s subs ON sub.subscriber_id = subs.subscriber_id WHERE subs.event_id = $1`,
-		SubscribersTable, SubscriptionsTable)
+		`SELECT sub.subscriber_id, sub.phone_number FROM %s sub JOIN %s subs ON sub.subscriber_id = subs.subscriber_id WHERE subs.event_id = $1`,
+		tables.SubscribersTable, tables.SubscriptionsTable)
 
 	rows, err := s.pool.Query(ctx, q, eventID)
 	if err != nil {
@@ -102,7 +101,7 @@ func (s *subscriptionStorage) GetEventSubscribers(ctx context.Context, eventID u
 
 func (s *subscriptionStorage) GetSubscriberByPhone(ctx context.Context, phoneNumber string) (*entity.Subscriber, error) {
 	var sub entity.Subscriber
-	q := fmt.Sprintf("SELECT * FROM %s WHERE phone_number = $1", SubscribersTable)
+	q := fmt.Sprintf("SELECT * FROM %s WHERE phone_number = $1", tables.SubscribersTable)
 	rows, err := s.pool.Query(ctx, q, phoneNumber)
 	if err != nil {
 		return nil, err

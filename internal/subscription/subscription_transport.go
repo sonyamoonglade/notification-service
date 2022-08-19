@@ -83,7 +83,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 	}
 
 	subsPhones := s.subscriptionService.SelectPhones(subscribers)
-	telegramSubs, err := s.telegramService.GetTelegramSubscribers(subsPhones)
+	telegramSubs, err := s.telegramService.GetTelegramSubscribers(ctx, subsPhones)
 	if err != nil {
 		httpErrors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())

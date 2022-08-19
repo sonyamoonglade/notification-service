@@ -40,7 +40,10 @@ func MakeErrorResponse(w http.ResponseWriter, err error) {
 	case strings.Contains(err.Error(), "already exists"):
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
-	case strings.Contains(err.Error(), "does not exist"):
+	case strings.Contains(err.Error(), "subscriber does not exist"):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	case strings.Contains(err.Error(), "subscription does not exist"):
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	case strings.Contains(err.Error(), "no subscriptions"):

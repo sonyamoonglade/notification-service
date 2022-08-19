@@ -107,7 +107,7 @@ func main() {
 	}
 
 	go telegramListener.ListenForUpdates()
-	logger.Info("notification bot it listening to updates and ready to notify")
+	logger.Info("notification bot is listening to updates and ready to notify")
 
 	go func() {
 		err := srv.ListenAndServe()

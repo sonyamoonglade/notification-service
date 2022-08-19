@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -44,8 +43,6 @@ func (m *EventsMiddlewares) DoesEventExist(h httprouter.Handle) httprouter.Handl
 			httpErrors.MakeErrorResponse(w, err)
 			return
 		}
-
-		fmt.Println(eventID)
 
 		withv := context.WithValue(ctx, "eventId", eventID)
 
