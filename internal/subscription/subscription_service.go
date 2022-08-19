@@ -5,14 +5,18 @@ import (
 
 	"github.com/sonyamoonglade/notification-service/internal/entity"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
+	"github.com/sonyamoonglade/notification-service/pkg/tgErrors"
 	"go.uber.org/zap"
 )
 
 type Service interface {
 	GetEventSubscribers(ctx context.Context, eventID uint64) ([]*entity.Subscriber, error)
 	GetSubscriberByPhone(ctx context.Context, phoneNumber string) (*entity.Subscriber, error)
-	RegisterSubscriber(ctx context.Context, phoneNumber string) (uint64, error)
+	GetTelegramSubscribers(ctx context.Context, phoneNumbers []string) ([]*entity.TelegramSubscriber, error)
 	GetSubscription(ctx context.Context, subscriberID uint64, eventID uint64) (*entity.Subscription, error)
+	GetTelegramSubscriber(ctx context.Context, phoneNumber string) (*entity.TelegramSubscriber, error)
+	RegisterSubscriber(ctx context.Context, phoneNumber string) (uint64, error)
+	RegisterTelegramSubscriber(ctx context.Context, telegramID int64, subscriberID uint64) error
 	SubscribeToEvent(ctx context.Context, subscriberID uint64, eventID uint64) error
 	SelectPhones(subs []*entity.Subscriber) []string
 }
@@ -81,4 +85,32 @@ func (s *subscriptionService) SelectPhones(subs []*entity.Subscriber) []string {
 		ph = append(ph, sub.PhoneNumber)
 	}
 	return ph
+}
+
+func (s *subscriptionService) RegisterTelegramSubscriber(ctx context.Context, telegramID int64, subscriberID uint64) error {
+	ok, err := s.storage.RegisterTelegramSubscriber(ctx, telegramID, subscriberID)
+	if err != nil {
+		return err
+	}
+	if ok != true {
+		return tgErrors.ErrTgSubscriberAlreadyExists
+	}
+
+	return nil
+}
+
+func (s *subscriptionService) GetTelegramSubscriber(ctx context.Context, phoneNumber string) (*entity.TelegramSubscriber, error) {
+	tgsub, err := s.storage.GetTelegramSubscriber(ctx, phoneNumber)
+	if err != nil {
+		return nil, err
+	}
+	if tgsub == nil {
+		return nil, tgErrors.ErrNoSuchTelegramSubscriber
+	}
+
+	return tgsub, nil
+}
+
+func (s *subscriptionService) GetTelegramSubscribers(ctx context.Context, phoneNumbers []string) ([]*entity.TelegramSubscriber, error) {
+	return s.storage.GetTelegramSubscribers(ctx, phoneNumbers)
 }

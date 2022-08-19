@@ -79,24 +79,22 @@ func main() {
 		logger.Fatalf("could not read templates. %s", err.Error())
 	}
 
-	telegramStorage := telegram.NewTelegramStorage(logger, pg.Pool)
-	telegramService := telegram.NewTelegramService(logger, telegramStorage)
-	telegramListener := telegram.NewTelegramListener(logger, appBot)
-
 	eventsStorage := events.NewEventStorage(logger, pg.Pool)
 	eventsService := events.NewEventsService(logger, eventsStorage, templateProvider)
 	eventsMiddleware := middleware.NewEventsMiddlewares(logger, eventsService)
 
 	subscriptionStorage := subscription.NewSubscriptionStorage(logger, pg.Pool)
 	subscriptionService := subscription.NewSubscriptionService(logger, subscriptionStorage)
+
 	subscriptionTransport := subscription.NewSubscriptionTransport(logger,
 		subscriptionService,
 		eventsMiddleware,
 		eventsService,
-		telegramService,
 		templateProvider,
 		appFmt,
 		appBot)
+
+	telegramListener := telegram.NewTelegramListener(logger, appBot, subscriptionService)
 
 	subscriptionTransport.InitRoutes(router)
 	logger.Info("initialized routes")

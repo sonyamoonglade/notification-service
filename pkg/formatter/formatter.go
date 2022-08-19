@@ -14,5 +14,5 @@ func NewFormatter() Formatter {
 }
 
 func (f *formatter) Format(templateText string, args ...interface{}) string {
-	return fmt.Sprintf(templateText, args)
+	return fmt.Sprintf(templateText, args...)
 }

@@ -18,7 +18,6 @@ import (
 	"github.com/sonyamoonglade/notification-service/pkg/formatter"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
 	"github.com/sonyamoonglade/notification-service/pkg/httpRes"
-	"github.com/sonyamoonglade/notification-service/pkg/telegram"
 	"github.com/sonyamoonglade/notification-service/pkg/template"
 	"go.uber.org/zap"
 )
@@ -31,7 +30,6 @@ type Transport interface {
 
 type subscriptionTransport struct {
 	subscriptionService Service
-	telegramService     telegram.Service
 	eventsService       events.Service
 	templateProvider    template.Provider
 	formatter           formatter.Formatter
@@ -49,7 +47,7 @@ func NewSubscriptionTransport(logger *zap.SugaredLogger,
 	service Service,
 	eventMiddlewares *middleware.EventsMiddlewares,
 	eventsService events.Service,
-	telegramService telegram.Service,
+
 	templateProvider template.Provider,
 	formatter formatter.Formatter,
 	bot bot.Bot) Transport {
@@ -59,10 +57,10 @@ func NewSubscriptionTransport(logger *zap.SugaredLogger,
 		subscriptionService: service,
 		eventsMiddlewares:   eventMiddlewares,
 		eventsService:       eventsService,
-		telegramService:     telegramService,
-		templateProvider:    templateProvider,
-		bot:                 bot,
-		formatter:           formatter,
+
+		templateProvider: templateProvider,
+		bot:              bot,
+		formatter:        formatter,
 	}
 }
 
@@ -83,7 +81,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 	}
 
 	subsPhones := s.subscriptionService.SelectPhones(subscribers)
-	telegramSubs, err := s.telegramService.GetTelegramSubscribers(ctx, subsPhones)
+	telegramSubs, err := s.subscriptionService.GetTelegramSubscribers(ctx, subsPhones)
 	if err != nil {
 		httpErrors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
