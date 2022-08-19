@@ -9,6 +9,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
 	"github.com/sonyamoonglade/delivery-service/pkg/binder"
+	"github.com/sonyamoonglade/delivery-service/pkg/validation"
 	"github.com/sonyamoonglade/notification-service/internal/entity"
 	"github.com/sonyamoonglade/notification-service/internal/events"
 	"github.com/sonyamoonglade/notification-service/internal/events/middleware"
@@ -114,16 +115,34 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		var p payload.WorkerLoginPayload
 		err := binder.Bind(r.Body, &p)
 		if err != nil {
+			s.logger.Error(err.Error())
 			httpErrors.MakeErrorResponse(w, err)
+			return
 		}
-		fmtTmpl = s.formatter.Format(tmpl, p.Username, p.LoginAt)
+		fmtTmpl = s.formatter.Format(
+			tmpl,
+			p.Username,
+			s.formatter.FormatTime(p.LoginAt, p.TimeOffset))
+
 	case reflect.TypeOf(payload.OrderCreatedPayload{}):
 		var p payload.OrderCreatedPayload
 		err := binder.Bind(r.Body, &p)
 		if err != nil {
+			s.logger.Error(err.Error())
 			httpErrors.MakeErrorResponse(w, err)
+			return
 		}
-		fmtTmpl = s.formatter.Format(tmpl, p.OrderID, p.Username, p.PhoneNumber, p.TotalCartPrice)
+
+		ok := validation.ValidatePhoneNumber(p.PhoneNumber)
+		if ok != true {
+			httpErrors.MakeErrorResponse(w, httpErrors.ErrInvalidPayload)
+			return
+		}
+		fmtTmpl = s.formatter.Format(tmpl,
+			p.OrderID,
+			p.Username,
+			p.PhoneNumber,
+			p.TotalCartPrice)
 	}
 
 	//Range over subscriber's associated telegram id's

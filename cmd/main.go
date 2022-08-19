@@ -32,6 +32,7 @@ func main() {
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 
+	//Todo: get dev mode from env
 	logger, err := logging.WithCfg(&logging.Config{
 		Level:    zap.NewAtomicLevelAt(zap.DebugLevel),
 		DevMode:  true,

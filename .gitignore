@@ -2,3 +2,4 @@
 .env.local
 .env.prod
 prod.config.yaml
+/logs/log.txt

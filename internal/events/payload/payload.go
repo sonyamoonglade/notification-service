@@ -21,7 +21,6 @@ func init() {
 	provider = &Provider{store: make(map[uint64]reflect.Type)}
 	provider.Register(1, OrderCreatedPayload{})
 	provider.Register(2, WorkerLoginPayload{})
-	fmt.Println(provider.store)
 }
 
 func GetProvider() *Provider {
@@ -63,6 +62,7 @@ type OrderCreatedPayload struct {
 	See events.json
 */
 type WorkerLoginPayload struct {
-	Username string    `json:"username" validate:"required"`
-	LoginAt  time.Time `json:"login_at" validate:"required"`
+	Username   string    `json:"username" validate:"required"`
+	LoginAt    time.Time `json:"login_at" validate:"required"`
+	TimeOffset int       `json:"time_offset" validate:"required"`
 }
