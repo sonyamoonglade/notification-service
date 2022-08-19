@@ -14,6 +14,7 @@ type Service interface {
 	RegisterSubscriber(ctx context.Context, phoneNumber string) (uint64, error)
 	GetSubscription(ctx context.Context, subscriberID uint64, eventID uint64) (*entity.Subscription, error)
 	SubscribeToEvent(ctx context.Context, subscriberID uint64, eventID uint64) error
+	SelectPhones(subs []*entity.Subscriber) []string
 }
 
 type subscriptionService struct {
@@ -32,7 +33,7 @@ func (s *subscriptionService) SubscribeToEvent(ctx context.Context, subscriberID
 	}
 	s.logger.Debugf("%d", subscriptionID)
 	if subscriptionID == 0 {
-		return httpErrors.SubscriptionAlreadyExists
+		return httpErrors.ErrSubscriptionAlreadyExists
 	}
 	return nil
 }
@@ -44,16 +45,18 @@ func (s *subscriptionService) GetSubscription(ctx context.Context, subscriberID 
 	}
 	//No such subscription
 	if subscription == nil {
-		return nil, httpErrors.SubscriptionDoesNotExist
+		return nil, httpErrors.ErrSubscriptionDoesNotExist
 	}
 
 	return subscription, nil
 }
 
 func (s *subscriptionService) GetEventSubscribers(ctx context.Context, eventID uint64) ([]*entity.Subscriber, error) {
-
-	panic("")
-
+	subs, err := s.storage.GetEventSubscribers(ctx, eventID)
+	if err != nil {
+		return nil, err
+	}
+	return subs, nil
 }
 
 func (s *subscriptionService) GetSubscriberByPhone(ctx context.Context, phoneNumber string) (*entity.Subscriber, error) {
@@ -63,11 +66,19 @@ func (s *subscriptionService) GetSubscriberByPhone(ctx context.Context, phoneNum
 	}
 	//No such subscriber
 	if sub == nil {
-		return nil, httpErrors.SubscriberDoesNotExist
+		return nil, httpErrors.ErrSubscriberDoesNotExist
 	}
 	return sub, nil
 }
 
 func (s *subscriptionService) RegisterSubscriber(ctx context.Context, phoneNumber string) (uint64, error) {
 	return s.storage.RegisterSubscriber(ctx, phoneNumber)
+}
+
+func (s *subscriptionService) SelectPhones(subs []*entity.Subscriber) []string {
+	var ph []string
+	for _, sub := range subs {
+		ph = append(ph, sub.PhoneNumber)
+	}
+	return ph
 }

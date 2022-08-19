@@ -76,56 +76,66 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		s.logger.Error(err.Error())
 		return
 	}
-
+	//No actual subscribers whatsoever, so the rest of the code is a waste
 	if len(subscribers) == 0 {
-		httpRes.NoSubscribers(w)
-		s.logger.Debugf("no subscribers for event %d", eventID)
+		httpRes.NoContent(w)
 		return
 	}
 
-	//todo: move to service
-	var subscriberPhones []string
-	for _, s := range subscribers {
-		subscriberPhones = append(subscriberPhones, s.PhoneNumber)
-	}
-
-	telegramIDs, err := s.telegramService.GetTelegramSubscribers(subscriberPhones)
+	subsPhones := s.subscriptionService.SelectPhones(subscribers)
+	telegramSubs, err := s.telegramService.GetTelegramSubscribers(subsPhones)
 	if err != nil {
 		httpErrors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
 
-	templ, err := s.templateProvider.Find(eventID)
+	//No actual subscribers in telegram, so the rest of the code is a waste
+	if len(telegramSubs) == 0 {
+		httpRes.NoContent(w)
+		return
+	}
+
+	tmpl, err := s.templateProvider.Find(eventID)
 	if err != nil {
 		httpErrors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
-	//templ will be formatted into fmtTempl passing ...args in below switch-case
-	var fmtTempl string
+	//tmpl will be formatted into fmtTmpl passing ...args in the switch-case below
+	var fmtTmpl string
 
 	//Find payload type assigned to eventID
-	//todo: move to service
 	payloadType := payload.GetProvider().MustGetType(eventID)
 
-	//todo: move to service
+	//Iterate over payload types, assigned to events in payload package
+	//Format the template, assigned to event in templates.json
+	//Keep in mind, formatter.Format func is Variadic
 	switch payloadType {
 	case reflect.TypeOf(payload.WorkerLoginPayload{}):
-		var shouldBind payload.WorkerLoginPayload
-		err := binder.Bind(r.Body, &shouldBind)
+		var p payload.WorkerLoginPayload
+		err := binder.Bind(r.Body, &p)
 		if err != nil {
 			httpErrors.MakeErrorResponse(w, err)
 		}
-		fmtTempl = s.formatter.Format(templ, shouldBind.Username, shouldBind.LoginAt)
+		fmtTmpl = s.formatter.Format(tmpl, p.Username, p.LoginAt)
+	case reflect.TypeOf(payload.OrderCreatedPayload{}):
+		var p payload.OrderCreatedPayload
+		err := binder.Bind(r.Body, &p)
+		if err != nil {
+			httpErrors.MakeErrorResponse(w, err)
+		}
+		fmtTmpl = s.formatter.Format(tmpl, p.OrderID, p.Username, p.PhoneNumber, p.TotalCartPrice)
 	}
 
-	for _, tgSub := range telegramIDs {
-		//Notify subscribers in telegram here with fmtTempl text
-		err := s.bot.Notify(tgSub.TelegramID, fmtTempl)
+	//Range over subscriber's associated telegram id's
+	for _, sub := range telegramSubs {
+		//Notify subscribers in telegram here with fmtTmpl text
+		err := s.bot.Notify(sub.TelegramID, fmtTmpl)
 		if err != nil {
 			//todo: if err occurs there bot must send warning msg to admin
 			httpErrors.MakeErrorResponse(w, err)
+			s.logger.Error(err.Error())
 			return
 		}
 	}
@@ -159,7 +169,7 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		s.logger.Errorf("HERE %s", err.Error())
 		//If any internal error not SubscriberDoesNotExist
-		if !errors.Is(err, httpErrors.SubscriberDoesNotExist) {
+		if !errors.Is(err, httpErrors.ErrSubscriberDoesNotExist) {
 			httpErrors.MakeErrorResponse(w, err)
 			s.logger.Error(err.Error())
 			return

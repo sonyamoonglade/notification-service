@@ -78,7 +78,26 @@ func (s *subscriptionStorage) RegisterSubscriber(ctx context.Context, phoneNumbe
 }
 
 func (s *subscriptionStorage) GetEventSubscribers(ctx context.Context, eventID uint64) ([]*entity.Subscriber, error) {
-	return nil, nil
+	var subs []*entity.Subscriber
+	q := fmt.Sprintf(
+		`SELECT * FROM %s sub JOIN %s subs ON sub.subscriber_id = subs.subscriber_id WHERE subs.event_id = $1`,
+		SubscribersTable, SubscriptionsTable)
+
+	rows, err := s.pool.Query(ctx, q, eventID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = pgxscan.ScanAll(&subs, rows)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	defer rows.Close()
+	return subs, nil
 }
 
 func (s *subscriptionStorage) GetSubscriberByPhone(ctx context.Context, phoneNumber string) (*entity.Subscriber, error) {
