@@ -40,16 +40,21 @@ func (p *Provider) GetType(eventID uint64) (interface{}, error) {
 	return v, nil
 }
 
+func (p *Provider) MustGetType(eventID uint64) reflect.Type {
+	v, _ := p.store[eventID]
+	return v
+}
+
 /*
 	OrderCreatedPayload
 	Payload for event with id 1
 	See events.json
 */
 type OrderCreatedPayload struct {
-	OrderID        int64  `json:"order_id"`
-	TotalCartPrice int64  `json:"total_cart_price"`
-	Username       string `json:"username"`
-	PhoneNumber    string `json:"phone_number"`
+	OrderID        int64  `json:"order_id" validate:"required"`
+	TotalCartPrice int64  `json:"total_cart_price" validate:"required"`
+	Username       string `json:"username" validate:"required"`
+	PhoneNumber    string `json:"phone_number" validate:"required"`
 }
 
 /*
@@ -58,6 +63,6 @@ type OrderCreatedPayload struct {
 	See events.json
 */
 type WorkerLoginPayload struct {
-	Username string    `json:"username"`
-	LoginAt  time.Time `json:"login_at"`
+	Username string    `json:"username" validate:"required"`
+	LoginAt  time.Time `json:"login_at" validate:"required"`
 }

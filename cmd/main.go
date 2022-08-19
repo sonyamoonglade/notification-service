@@ -17,6 +17,7 @@ import (
 	"github.com/sonyamoonglade/notification-service/internal/events/middleware"
 	"github.com/sonyamoonglade/notification-service/internal/subscription"
 	"github.com/sonyamoonglade/notification-service/pkg/bot"
+	"github.com/sonyamoonglade/notification-service/pkg/formatter"
 	"github.com/sonyamoonglade/notification-service/pkg/postgres"
 	"github.com/sonyamoonglade/notification-service/pkg/server"
 	"github.com/sonyamoonglade/notification-service/pkg/telegram"
@@ -70,6 +71,7 @@ func main() {
 		logger.Fatalf("could not create bot instance. %s", err.Error())
 	}
 
+	appFmt := formatter.NewFormatter()
 	templateProvider := template.NewTemplateProvider()
 
 	//Read templates.json
@@ -77,23 +79,22 @@ func main() {
 		logger.Fatalf("could not read templates. %s", err.Error())
 	}
 
-	telegramStorage := telegram.NewTelegramStorage(logger, pg.Pool)
-	telegramService := telegram.NewTelegramService(logger, telegramStorage)
-	telegramListener := telegram.NewTelegramListener(logger, appBot)
-
 	eventsStorage := events.NewEventStorage(logger, pg.Pool)
 	eventsService := events.NewEventsService(logger, eventsStorage, templateProvider)
 	eventsMiddleware := middleware.NewEventsMiddlewares(logger, eventsService)
 
 	subscriptionStorage := subscription.NewSubscriptionStorage(logger, pg.Pool)
 	subscriptionService := subscription.NewSubscriptionService(logger, subscriptionStorage)
+
 	subscriptionTransport := subscription.NewSubscriptionTransport(logger,
 		subscriptionService,
 		eventsMiddleware,
 		eventsService,
-		telegramService,
 		templateProvider,
+		appFmt,
 		appBot)
+
+	telegramListener := telegram.NewTelegramListener(logger, appBot, subscriptionService)
 
 	subscriptionTransport.InitRoutes(router)
 	logger.Info("initialized routes")
@@ -104,7 +105,7 @@ func main() {
 	}
 
 	go telegramListener.ListenForUpdates()
-	logger.Info("notification bot it listening to updates and ready to notify")
+	logger.Info("notification bot is listening to updates and ready to notify")
 
 	go func() {
 		err := srv.ListenAndServe()

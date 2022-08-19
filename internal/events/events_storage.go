@@ -4,13 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/pkg/errors"
 	"github.com/sonyamoonglade/notification-service/internal/entity"
 	"go.uber.org/zap"
 )
 
 type Storage interface {
-	IsExist(ctx context.Context, eventName string) (uint64, error)
+	DoesExist(ctx context.Context, eventID uint64) (bool, error)
 	RegisterEvent(ctx context.Context, e entity.Event) error
 }
 
@@ -27,14 +29,17 @@ func NewEventStorage(logger *zap.SugaredLogger, pool *pgxpool.Pool) Storage {
 	return &eventStorage{logger: logger, pool: pool}
 }
 
-func (e *eventStorage) IsExist(ctx context.Context, eventName string) (uint64, error) {
-	var eventID uint64
-	q := fmt.Sprintf("SELECT event_id FROM %s WHERE name = $1", EventTable)
-	err := e.pool.QueryRow(ctx, q, eventName).Scan(&eventID)
+func (e *eventStorage) DoesExist(ctx context.Context, eventID uint64) (bool, error) {
+	var ok bool
+	q := fmt.Sprintf("SELECT true FROM %s WHERE event_id = $1", EventTable)
+	err := e.pool.QueryRow(ctx, q, eventID).Scan(&ok)
 	if err != nil {
-		return 0, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
 	}
-	return eventID, nil
+	return true, nil
 }
 
 func (e *eventStorage) RegisterEvent(ctx context.Context, ev entity.Event) error {

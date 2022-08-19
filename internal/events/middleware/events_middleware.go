@@ -2,11 +2,13 @@ package middleware
 
 import (
 	"context"
+	"net/http"
+	"strconv"
+
 	"github.com/julienschmidt/httprouter"
 	"github.com/sonyamoonglade/notification-service/internal/events"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 type EventsMiddlewares struct {
@@ -20,15 +22,24 @@ func NewEventsMiddlewares(logger *zap.SugaredLogger, service events.Service) *Ev
 
 func (m *EventsMiddlewares) DoesEventExist(h httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-		eventName := params.ByName("eventName")
-		if eventName == "" {
+		ctx := r.Context()
+
+		eventIDstr := params.ByName("event_id")
+
+		if eventIDstr == "" {
 			httpErrors.MakeErrorResponse(w, httpErrors.ErrNoEventId)
 			return
 		}
-		ctx := r.Context()
-		eventID, err := m.eventService.IsExists(ctx, eventName)
+
+		eventID, err := strconv.ParseUint(eventIDstr, 2, 64)
 		if err != nil {
-			m.logger.Errorf("eventService.IsExists err. %s", err.Error())
+			httpErrors.MakeErrorResponse(w, err)
+			return
+		}
+
+		err = m.eventService.DoesExist(ctx, eventID)
+		if err != nil {
+			m.logger.Error(err.Error())
 			httpErrors.MakeErrorResponse(w, err)
 			return
 		}

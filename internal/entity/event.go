@@ -5,7 +5,7 @@ type Events struct {
 }
 
 type Event struct {
-	EventID   uint64 `json:"event_id,omitempty"`
-	Name      string `json:"name"`
-	Translate string `json:"translate"`
+	EventID   uint64 `json:"event_id,omitempty" db:"event_id"`
+	Name      string `json:"name" db:"name"`
+	Translate string `json:"translate" db:"translate"`
 }
