@@ -180,7 +180,7 @@ func (s *subscriptionStorage) GetTelegramSubscribers(ctx context.Context, phoneN
 	}
 
 	mainq := fmt.Sprintf(
-		"SELECT * FROM %s tgsub JOIN %s sub ON tgsub.subscriber_id = sub.subscriber_id WHERE %s",
+		"SELECT tgsub.telegram_id, tgsub.subscriber_id FROM %s tgsub JOIN %s sub ON tgsub.subscriber_id = sub.subscriber_id WHERE %s",
 		tables.TelegramSubscribersTable, tables.SubscribersTable, whereq)
 
 	rows, err := s.pool.Query(ctx, mainq)

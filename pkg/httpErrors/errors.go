@@ -48,8 +48,13 @@ func MakeErrorResponse(w http.ResponseWriter, err error) {
 		return
 	case strings.Contains(err.Error(), "no subscriptions"):
 		http.Error(w, "", http.StatusNoContent)
+		return
 	case strings.Contains(err.Error(), "no telegram subscribers"):
 		http.Error(w, "", http.StatusNoContent)
+		return
+	case strings.Contains(err.Error(), "invalid request payload"):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	default:
 		http.Error(w, ErrInternalError.Error(), http.StatusInternalServerError)
 		return

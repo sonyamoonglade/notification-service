@@ -27,12 +27,13 @@ func (m *EventsMiddlewares) DoesEventExist(h httprouter.Handle) httprouter.Handl
 		eventIDstr := params.ByName("event_id")
 
 		if eventIDstr == "" {
+			m.logger.Debug("empty eventID string")
 			httpErrors.MakeErrorResponse(w, httpErrors.ErrNoEventId)
 			return
 		}
-
-		eventID, err := strconv.ParseUint(eventIDstr, 2, 64)
+		eventID, err := strconv.ParseUint(eventIDstr, 10, 64)
 		if err != nil {
+			m.logger.Error(err.Error())
 			httpErrors.MakeErrorResponse(w, err)
 			return
 		}
