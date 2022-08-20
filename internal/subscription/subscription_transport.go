@@ -40,7 +40,7 @@ type subscriptionTransport struct {
 }
 
 func (s *subscriptionTransport) InitRoutes(router *httprouter.Router) {
-	router.GET("/api/events/fire/:event_id", s.eventsMiddlewares.DoesEventExist(s.Fire))
+	router.POST("/api/events/fire/:eventName", s.eventsMiddlewares.DoesEventExist(s.Fire))
 	router.POST("/api/subscriptions", s.Subscribe)
 }
 
@@ -164,7 +164,6 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	var inp dto.SubscribeToEventInp
-
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
 	defer cancel()
 
@@ -175,7 +174,7 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = s.eventsService.DoesExist(ctx, inp.EventID)
+	_, err = s.eventsService.DoesExist(ctx, inp.EventName)
 	if err != nil {
 		httpErrors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
@@ -184,7 +183,6 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 
 	subscriber, err := s.subscriptionService.GetSubscriberByPhone(ctx, inp.PhoneNumber)
 	if err != nil {
-		s.logger.Errorf("HERE %s", err.Error())
 		//If any internal error not SubscriberDoesNotExist
 		if !errors.Is(err, httpErrors.ErrSubscriberDoesNotExist) {
 			httpErrors.MakeErrorResponse(w, err)

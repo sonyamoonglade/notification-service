@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	tg "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -34,6 +35,11 @@ func NewTelegramListener(logger *zap.SugaredLogger, bot bot.Bot, subscriptionSer
 func (t *telegramListener) handleContact(ctx context.Context, chatID int64, cnt *tg.Contact) {
 
 	phoneNumber := cnt.PhoneNumber
+
+	//Make sure phoneNumber startsWith '+'
+	if strings.Split(phoneNumber, "")[0] != "+" {
+		phoneNumber = "+" + phoneNumber
+	}
 
 	//Get subscriber
 	sub, err := t.subscriptionService.GetSubscriberByPhone(ctx, phoneNumber)
