@@ -6,3 +6,6 @@ build-local:
 
 build-prod:
 	docker build -f ./docker/prod.Dockerfile -t sonyamoonglade/sancho-hub:notification-prod . && docker push sonyamoonglade/sancho-hub:notification-prod
+
+cp-env:
+	cp .env.prod ../deployment/notification/
