@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-var ErrNoEventId = errors.New("missing eventId in url string")
+var ErrNoEventName = errors.New("missing eventName in url string")
+var ErrNoSubscriptionID = errors.New("missing subscriptionId in url string")
 var ErrInvalidEventId = errors.New("invalid eventId format")
 var ErrInternalError = errors.New("internal error")
 var ErrMissingTemplateServiceUnavailable = errors.New("service is unavailable due to missing template")
@@ -18,8 +19,8 @@ var ErrSubscriptionAlreadyExists = errors.New("subscription already exists")
 var ErrNoSubscriptions = errors.New("no subscriptions")
 var ErrNoTelegramSubscribers = errors.New("no telegram subscribers")
 
-func NewErrEventDoesNotExist(eventID uint64) error {
-	return errors.New(fmt.Sprintf("event with id %d does not exist", eventID))
+func NewErrEventDoesNotExist(eventName string) error {
+	return errors.New(fmt.Sprintf("event with name %s does not exist", eventName))
 }
 
 func MakeErrorResponse(w http.ResponseWriter, err error) {
@@ -28,7 +29,7 @@ func MakeErrorResponse(w http.ResponseWriter, err error) {
 	case strings.Contains(err.Error(), "with name"):
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
-	case errors.Is(err, ErrNoEventId):
+	case errors.Is(err, ErrNoEventName):
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	case strings.Contains(err.Error(), "template for event"):

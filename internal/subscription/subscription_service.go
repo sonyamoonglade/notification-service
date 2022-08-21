@@ -19,6 +19,7 @@ type Service interface {
 	RegisterTelegramSubscriber(ctx context.Context, telegramID int64, subscriberID uint64) error
 	SubscribeToEvent(ctx context.Context, subscriberID uint64, eventID uint64) error
 	SelectPhones(subs []*entity.Subscriber) []string
+	CancelSubscription(ctx context.Context, subscriptionID uint64) error
 }
 
 type subscriptionService struct {
@@ -113,4 +114,15 @@ func (s *subscriptionService) GetTelegramSubscriber(ctx context.Context, phoneNu
 
 func (s *subscriptionService) GetTelegramSubscribers(ctx context.Context, phoneNumbers []string) ([]*entity.TelegramSubscriber, error) {
 	return s.storage.GetTelegramSubscribers(ctx, phoneNumbers)
+}
+
+func (s *subscriptionService) CancelSubscription(ctx context.Context, subscriptionID uint64) error {
+	ok, err := s.storage.CancelSubscription(ctx, subscriptionID)
+	if err != nil {
+		return err
+	}
+	if ok != true {
+		return httpErrors.ErrSubscriptionDoesNotExist
+	}
+	return nil
 }

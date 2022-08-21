@@ -12,7 +12,7 @@ import (
 )
 
 type Storage interface {
-	DoesExist(ctx context.Context, eventID uint64) (bool, error)
+	DoesExist(ctx context.Context, eventName string) (uint64, error)
 	RegisterEvent(ctx context.Context, e entity.Event) error
 }
 
@@ -29,17 +29,17 @@ func NewEventStorage(logger *zap.SugaredLogger, pool *pgxpool.Pool) Storage {
 	return &eventStorage{logger: logger, pool: pool}
 }
 
-func (e *eventStorage) DoesExist(ctx context.Context, eventID uint64) (bool, error) {
-	var ok bool
-	q := fmt.Sprintf("SELECT true FROM %s WHERE event_id = $1", EventTable)
-	err := e.pool.QueryRow(ctx, q, eventID).Scan(&ok)
+func (e *eventStorage) DoesExist(ctx context.Context, eventName string) (uint64, error) {
+	var eventID uint64
+	q := fmt.Sprintf("SELECT event_Id FROM %s WHERE name = $1", EventTable)
+	err := e.pool.QueryRow(ctx, q, eventName).Scan(&eventID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
+			return 0, nil
 		}
-		return false, err
+		return 0, err
 	}
-	return true, nil
+	return eventID, nil
 }
 
 func (e *eventStorage) RegisterEvent(ctx context.Context, ev entity.Event) error {

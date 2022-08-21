@@ -32,7 +32,7 @@ ALTER TABLE "subscriptions" ADD CONSTRAINT "event_id_sub_id_unique"
 
 CREATE TABLE IF NOT EXISTS "telegram_subscribers"(
     "subscriber_id" INTEGER NOT NULL,
-    "telegram_id" INTEGER NOT NULL
+    "telegram_id" BIGINT NOT NULL
 );
 
 -- Make sure that one telegram user is one subscriber only

@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/sonyamoonglade/notification-service/internal/events"
@@ -24,21 +23,15 @@ func (m *EventsMiddlewares) DoesEventExist(h httprouter.Handle) httprouter.Handl
 	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 		ctx := r.Context()
 
-		eventIDstr := params.ByName("event_id")
+		eventName := params.ByName("eventName")
 
-		if eventIDstr == "" {
-			m.logger.Debug("empty eventID string")
-			httpErrors.MakeErrorResponse(w, httpErrors.ErrNoEventId)
-			return
-		}
-		eventID, err := strconv.ParseUint(eventIDstr, 10, 64)
-		if err != nil {
-			m.logger.Error(err.Error())
-			httpErrors.MakeErrorResponse(w, err)
+		if eventName == "" {
+			m.logger.Debug("empty eventName string")
+			httpErrors.MakeErrorResponse(w, httpErrors.ErrNoEventName)
 			return
 		}
 
-		err = m.eventService.DoesExist(ctx, eventID)
+		eventID, err := m.eventService.DoesExist(ctx, eventName)
 		if err != nil {
 			m.logger.Error(err.Error())
 			httpErrors.MakeErrorResponse(w, err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -26,6 +27,7 @@ import (
 type Transport interface {
 	Fire(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	Subscribe(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
+	Cancel(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	InitRoutes(router *httprouter.Router)
 }
 
@@ -40,8 +42,9 @@ type subscriptionTransport struct {
 }
 
 func (s *subscriptionTransport) InitRoutes(router *httprouter.Router) {
-	router.GET("/api/events/fire/:event_id", s.eventsMiddlewares.DoesEventExist(s.Fire))
+	router.POST("/api/events/fire/:eventName", s.eventsMiddlewares.DoesEventExist(s.Fire))
 	router.POST("/api/subscriptions", s.Subscribe)
+	router.DELETE("/api/subscriptions/:subscriptionId", s.Cancel)
 }
 
 func NewSubscriptionTransport(logger *zap.SugaredLogger,
@@ -124,8 +127,22 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 			p.Username,
 			s.formatter.FormatTime(p.LoginAt, p.TimeOffset))
 
-	case reflect.TypeOf(payload.OrderCreatedPayload{}):
-		var p payload.OrderCreatedPayload
+		break
+	case reflect.TypeOf(payload.UserOrderCreatePayload{}):
+		var p payload.UserOrderCreatePayload
+		err := binder.Bind(r.Body, &p)
+		if err != nil {
+			s.logger.Error(err.Error())
+			httpErrors.MakeErrorResponse(w, err)
+			return
+		}
+		fmtTmpl = s.formatter.Format(tmpl,
+			p.OrderID,
+			p.TotalCartPrice)
+
+		break
+	case reflect.TypeOf(payload.MasterOrderCreatePayload{}):
+		var p payload.MasterOrderCreatePayload
 		err := binder.Bind(r.Body, &p)
 		if err != nil {
 			s.logger.Error(err.Error())
@@ -143,6 +160,8 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 			p.Username,
 			p.PhoneNumber,
 			p.TotalCartPrice)
+
+		break
 	}
 
 	//Range over subscriber's associated telegram id's
@@ -164,7 +183,6 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	var inp dto.SubscribeToEventInp
-
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
 	defer cancel()
 
@@ -175,7 +193,7 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	err = s.eventsService.DoesExist(ctx, inp.EventID)
+	eventID, err := s.eventsService.DoesExist(ctx, inp.EventName)
 	if err != nil {
 		httpErrors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
@@ -184,7 +202,6 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 
 	subscriber, err := s.subscriptionService.GetSubscriberByPhone(ctx, inp.PhoneNumber)
 	if err != nil {
-		s.logger.Errorf("HERE %s", err.Error())
 		//If any internal error not SubscriberDoesNotExist
 		if !errors.Is(err, httpErrors.ErrSubscriberDoesNotExist) {
 			httpErrors.MakeErrorResponse(w, err)
@@ -208,14 +225,42 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 	}
 
 	//Create subscription
-	err = s.subscriptionService.SubscribeToEvent(ctx, subscriber.SubscriberID, inp.EventID)
+	err = s.subscriptionService.SubscribeToEvent(ctx, subscriber.SubscriberID, eventID)
 	if err != nil {
 		httpErrors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
-	s.logger.Debugf("subscriber with phone %s has subscribed to event %d", inp.PhoneNumber, inp.EventID)
+	s.logger.Debugf("subscriber with phone %s has subscribed to event %d", inp.PhoneNumber, eventID)
 
 	httpRes.Created(w)
+	return
+}
+
+func (s *subscriptionTransport) Cancel(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+
+	subscriptionIDstr := params.ByName("subscriptionId")
+
+	if subscriptionIDstr == "" {
+		httpErrors.MakeErrorResponse(w, httpErrors.ErrNoSubscriptionID)
+		s.logger.Debug("missing subscription id")
+		return
+	}
+
+	subscriptionID, err := strconv.ParseUint(subscriptionIDstr, 10, 64)
+	if err != nil {
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Error(err.Error())
+		return
+	}
+
+	err = s.subscriptionService.CancelSubscription(r.Context(), subscriptionID)
+	if err != nil {
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Error(err.Error())
+		return
+	}
+
+	httpRes.Ok(w)
 	return
 }
