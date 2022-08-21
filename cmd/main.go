@@ -44,13 +44,14 @@ func main() {
 
 	//Make sure to load env variables on local development
 	if err := godotenv.Load(".env.local"); err != nil {
-		logger.Fatalf("could not load .env.local %s", err.Error())
+		logger.Errorf("could not load .env.local %s", err.Error())
 	}
 
 	appCfg, err := config.GetAppConfig()
 	if err != nil {
 		logger.Fatalf("could not get app config. %s", err.Error())
 	}
+
 	logger.Info("initialized config")
 	if appCfg.Env == "development" {
 		logger.Info("environment variables are loaded (development only)")
