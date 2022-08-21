@@ -22,6 +22,7 @@ type Storage interface {
 	RegisterSubscriber(ctx context.Context, phoneNumber string) (uint64, error)
 	RegisterTelegramSubscriber(ctx context.Context, telegramID int64, subscriberID uint64) (bool, error)
 	SubscribeToEvent(ctx context.Context, subscriberID uint64, eventID uint64) (uint64, error)
+	CancelSubscription(ctx context.Context, subscriptionID uint64) (bool, error)
 }
 
 type subscriptionStorage struct {
@@ -200,5 +201,17 @@ func (s *subscriptionStorage) GetTelegramSubscribers(ctx context.Context, phoneN
 
 	defer rows.Close()
 	return telegramSubs, nil
+
+}
+
+func (s *subscriptionStorage) CancelSubscription(ctx context.Context, subscriptionID uint64) (bool, error) {
+	q := fmt.Sprintf("DELETE FROM %s WHERE subscription_id = $1 RETURNING subscription_id", tables.SubscriptionsTable)
+
+	rows, err := s.pool.Query(ctx, q, subscriptionID)
+	if err != nil {
+		return false, err
+	}
+
+	return rows.Next(), nil
 
 }

@@ -1,8 +1,8 @@
 run:
 	go run cmd/main.go
 
-up:
-	migrate -path migrations -database "postgres://bkfhqnkt:tY-yRBFFiy48j622xXrPO28g0OT-xKsM@abul.db.elephantsql.com/bkfhqnkt" -verbose up
+build-local:
+	docker build -f ./docker/local.Dockerfile -t sonyamoonglade/sancho-hub:notification-local . && docker push sonyamoonglade/sancho-hub:notification-local
 
-down:
-	migrate -path migrations -database "postgres://bkfhqnkt:tY-yRBFFiy48j622xXrPO28g0OT-xKsM@abul.db.elephantsql.com/bkfhqnkt" -verbose down
+build-prod:
+	docker build -f ./docker/prod.Dockerfile -t sonyamoonglade/sancho-hub:notification-prod . && docker push sonyamoonglade/sancho-hub:notification-prod

@@ -2,13 +2,18 @@
   "events": [
     {
       "event_id": 1,
-      "name": "order_created",
-      "translate": "Заказ создан"
+      "name": "master_order_create",
+      "translate": "Создание заказа воркером"
     },
     {
       "event_id": 2,
+      "name": "user_order_create",
+      "translate": "Создание заказа пользователем"
+    },
+    {
+      "event_id": 3,
       "name": "worker_login",
-      "translate": "Воркер логин"
+      "translate": "Заход в систему воркером"
     }
   ]
 }

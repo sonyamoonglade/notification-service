@@ -8,6 +8,7 @@ import (
 )
 
 var ErrNoEventName = errors.New("missing eventName in url string")
+var ErrNoSubscriptionID = errors.New("missing subscriptionId in url string")
 var ErrInvalidEventId = errors.New("invalid eventId format")
 var ErrInternalError = errors.New("internal error")
 var ErrMissingTemplateServiceUnavailable = errors.New("service is unavailable due to missing template")

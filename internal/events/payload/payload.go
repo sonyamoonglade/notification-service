@@ -19,8 +19,9 @@ type Provider struct {
 */
 func init() {
 	provider = &Provider{store: make(map[uint64]reflect.Type)}
-	provider.Register(1, OrderCreatedPayload{})
-	provider.Register(2, WorkerLoginPayload{})
+	provider.Register(1, MasterOrderCreatePayload{})
+	provider.Register(2, UserOrderCreatePayload{})
+	provider.Register(3, WorkerLoginPayload{})
 }
 
 func GetProvider() *Provider {
@@ -45,11 +46,11 @@ func (p *Provider) MustGetType(eventID uint64) reflect.Type {
 }
 
 /*
-	OrderCreatedPayload
+	MasterOrderCreatePayload
 	Payload for event with id 1
 	See events.json
 */
-type OrderCreatedPayload struct {
+type MasterOrderCreatePayload struct {
 	OrderID        int64  `json:"order_id" validate:"required"`
 	TotalCartPrice int64  `json:"total_cart_price" validate:"required"`
 	Username       string `json:"username" validate:"required"`
@@ -58,11 +59,21 @@ type OrderCreatedPayload struct {
 
 /*
 	WorkerLoginPayload
-	Payload for event with id 2
+	Payload for event with id 3
 	See events.json
 */
 type WorkerLoginPayload struct {
 	Username   string    `json:"username" validate:"required"`
 	LoginAt    time.Time `json:"login_at" validate:"required"`
 	TimeOffset int       `json:"time_offset" validate:"required"`
+}
+
+/*
+	UserOrderCreatePayload
+	Payload for event with id 2
+	See events.json
+*/
+type UserOrderCreatePayload struct {
+	OrderID        int64 `json:"order_id" validate:"required"`
+	TotalCartPrice int64 `json:"total_cart_price" validate:"required"`
 }
