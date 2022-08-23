@@ -60,7 +60,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	pg, err := postgres.New(ctx, appCfg.DatabaseURL)
+	pg, err := postgres.New(logger, ctx, appCfg.DatabaseURL)
 	if err != nil {
 		logger.Fatalf("could not create pool. %s", err.Error())
 	}
@@ -126,11 +126,14 @@ func main() {
 	gctx, gcancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer gcancel()
 
-	pg.CloseConn()
-	logger.Info("closing postgres connection...")
+	defer func() {
+		logger.Info("before closing postgres")
+		pg.CloseConn()
+		logger.Info("closing postgres connection...")
 
-	appBot.ClosePoll()
-	logger.Info("closing bot poll...")
+		appBot.ClosePoll()
+		logger.Info("closing bot poll...")
+	}()
 
 	if err := srv.Shutdown(gctx); err != nil {
 		logger.Fatalf("server could not shutdown gracefully. %s", err.Error())

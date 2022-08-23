@@ -43,9 +43,17 @@ func (s *subscriptionStorage) GetSubscribersDataJoined(ctx context.Context) ([]*
 				subs.subscription_id, e.name, e.translate FROM %s sub
 				JOIN %s subs ON sub.subscriber_id = subs.subscriber_id
 				JOIN %s e ON subs.event_id = e.event_id
-				LEFT JOIN %s tgsub ON sub.subscriber_id = tgsub.subscriber_id`,
+				LEFT JOIN %s tgsub ON sub.subscriber_id = tgsub.subscriber_id
+				ORDER BY sub.phone_number ASC`,
 		tables.Subscribers, tables.Subscriptions, tables.Events, tables.TelegramSubscribers)
-	rows, err := s.pool.Query(ctx, q)
+
+	c, err := s.pool.Acquire(ctx)
+	defer c.Release()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := c.Query(ctx, q)
 	if err != nil {
 		return nil, err
 	}

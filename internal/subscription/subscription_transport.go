@@ -195,6 +195,14 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	ok := validation.ValidatePhoneNumber(inp.PhoneNumber)
+	if ok != true {
+		err = httpErrors.ErrInvalidPayload
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Debug(err.Error())
+		return
+	}
+
 	eventID, err := s.eventsService.DoesExist(ctx, inp.EventName)
 	if err != nil {
 		httpErrors.MakeErrorResponse(w, err)
