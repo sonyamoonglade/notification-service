@@ -48,11 +48,13 @@ func (t *telegramListener) handleContact(ctx context.Context, chatID int64, cnt 
 		if errors.Is(err, httpErrors.ErrSubscriberDoesNotExist) {
 			text := message.Format(message.NoSuchSubscriber, phoneNumber)
 			msg := tg.NewMessage(chatID, text)
+			t.logger.Debugf("no such subscriber %s", phoneNumber)
 
 			err := t.bot.SoftSend(msg)
 			if err != nil {
 				return
 			}
+			return
 		}
 		//Some internal error
 		t.logger.Error(err.Error())
@@ -159,7 +161,9 @@ func (t *telegramListener) ListenForUpdates() {
 
 	cfg := t.bot.GetUpdatesCfg()
 	updch := cl.GetUpdatesChan(cfg)
+
 	for upd := range updch {
 		t.mapUpdate(&upd)
 	}
+
 }

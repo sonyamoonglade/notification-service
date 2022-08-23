@@ -36,5 +36,8 @@ CREATE TABLE IF NOT EXISTS "telegram_subscribers"(
 );
 
 -- Make sure that one telegram user is one subscriber only
-ALTER TABLE "telegram_subscribers" ADD CONSTRAINT "sub_id_teleg_id_unqiue"
-    UNIQUE("subscriber_id","telegram_id");
+ALTER TABLE "telegram_subscribers" ADD CONSTRAINT "teleg_id_unqiue"
+    UNIQUE("subscriber_id");
+
+ALTER TABLE "telegram_subscribers" ADD CONSTRAINT "subscriber_id_unique"
+    UNIQUE("telegram_id");

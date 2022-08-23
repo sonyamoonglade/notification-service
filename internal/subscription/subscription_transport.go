@@ -20,6 +20,7 @@ import (
 	"github.com/sonyamoonglade/notification-service/pkg/formatter"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
 	"github.com/sonyamoonglade/notification-service/pkg/httpRes"
+	"github.com/sonyamoonglade/notification-service/pkg/recovery_middleware"
 	"github.com/sonyamoonglade/notification-service/pkg/template"
 	"go.uber.org/zap"
 )
@@ -28,6 +29,7 @@ type Transport interface {
 	Fire(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	Subscribe(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	Cancel(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
+	GetAll(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	InitRoutes(router *httprouter.Router)
 }
 
@@ -42,9 +44,10 @@ type subscriptionTransport struct {
 }
 
 func (s *subscriptionTransport) InitRoutes(router *httprouter.Router) {
-	router.POST("/api/events/fire/:eventName", s.eventsMiddlewares.DoesEventExist(s.Fire))
+	router.POST("/api/events/fire/:eventName", recovery_middleware.Recover(s.logger, s.eventsMiddlewares.DoesEventExist(s.Fire)))
 	router.POST("/api/subscriptions", s.Subscribe)
 	router.DELETE("/api/subscriptions/:subscriptionId", s.Cancel)
+	router.GET("/api/subscriptions", recovery_middleware.Recover(s.logger, s.GetAll))
 }
 
 func NewSubscriptionTransport(logger *zap.SugaredLogger,
@@ -61,10 +64,9 @@ func NewSubscriptionTransport(logger *zap.SugaredLogger,
 		subscriptionService: service,
 		eventsMiddlewares:   eventMiddlewares,
 		eventsService:       eventsService,
-
-		templateProvider: templateProvider,
-		bot:              bot,
-		formatter:        formatter,
+		templateProvider:    templateProvider,
+		bot:                 bot,
+		formatter:           formatter,
 	}
 }
 
@@ -193,6 +195,14 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	ok := validation.ValidatePhoneNumber(inp.PhoneNumber)
+	if ok != true {
+		err = httpErrors.ErrInvalidPayload
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Debug(err.Error())
+		return
+	}
+
 	eventID, err := s.eventsService.DoesExist(ctx, inp.EventName)
 	if err != nil {
 		httpErrors.MakeErrorResponse(w, err)
@@ -262,5 +272,21 @@ func (s *subscriptionTransport) Cancel(w http.ResponseWriter, r *http.Request, p
 	}
 
 	httpRes.Ok(w)
+	return
+}
+
+func (s *subscriptionTransport) GetAll(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	s.logger.Debug("get all subscribers")
+
+	subscribersData, err := s.subscriptionService.GetSubscribersDataJoined(r.Context())
+	if err != nil {
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Error(err.Error())
+		return
+	}
+
+	httpRes.Json(s.logger, w, http.StatusOK, httpRes.JSON{
+		"subscribers": subscribersData,
+	})
 	return
 }

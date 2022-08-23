@@ -1,7 +1,8 @@
 package tables
 
 const (
-	SubscribersTable         = "subscribers"
-	SubscriptionsTable       = "subscriptions"
-	TelegramSubscribersTable = "telegram_subscribers"
+	Subscribers         = "subscribers"
+	Subscriptions       = "subscriptions"
+	TelegramSubscribers = "telegram_subscribers"
+	Events              = "events"
 )
