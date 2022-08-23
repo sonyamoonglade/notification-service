@@ -30,7 +30,7 @@ func main() {
 	log.Println("booting an application")
 
 	exit := make(chan os.Signal, 1)
-	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
 	//Todo: get dev mode from env
 	logger, err := logging.WithCfg(&logging.Config{
@@ -107,29 +107,34 @@ func main() {
 	}
 
 	go telegramListener.ListenForUpdates()
-	logger.Info("notification bot is listening to updates and ready to notify")
+	logger.Info("bot is listening to updates and ready to notify")
 
 	go func() {
 		err := srv.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Fatalf("could not start server. %s", err.Error())
 		}
+
 	}()
 	logger.Infof("server has started on port: %s", appCfg.AppPort)
 
 	<-exit
 	//Graceful shutdown
 	logger.Info("Shutting down gracefully...")
-	//Time to shutdown gracefully
+
+	//Timeout for shutdown
 	gctx, gcancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer func() {
-		pg.CloseConn()
-		gcancel()
-	}()
+	defer gcancel()
+
+	pg.CloseConn()
+	logger.Info("closing postgres connection...")
+
+	appBot.ClosePoll()
+	logger.Info("closing bot poll...")
 
 	if err := srv.Shutdown(gctx); err != nil {
 		logger.Fatalf("server could not shutdown gracefully. %s", err.Error())
 	}
+	logger.Info("server has shutdown")
 
-	logger.Info("ok")
 }

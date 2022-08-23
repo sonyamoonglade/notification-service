@@ -4,12 +4,14 @@ import (
 	"context"
 
 	"github.com/sonyamoonglade/notification-service/internal/entity"
+	"github.com/sonyamoonglade/notification-service/internal/subscription/response_object"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
 	"github.com/sonyamoonglade/notification-service/pkg/tgErrors"
 	"go.uber.org/zap"
 )
 
 type Service interface {
+	GetSubscribersDataJoined(ctx context.Context) ([]*response_object.SubscriberRO, error)
 	GetEventSubscribers(ctx context.Context, eventID uint64) ([]*entity.Subscriber, error)
 	GetSubscriberByPhone(ctx context.Context, phoneNumber string) (*entity.Subscriber, error)
 	GetTelegramSubscribers(ctx context.Context, phoneNumbers []string) ([]*entity.TelegramSubscriber, error)
@@ -29,6 +31,10 @@ type subscriptionService struct {
 
 func NewSubscriptionService(logger *zap.SugaredLogger, storage Storage) Service {
 	return &subscriptionService{logger: logger, storage: storage}
+}
+
+func (s *subscriptionService) GetSubscribersDataJoined(ctx context.Context) ([]*response_object.SubscriberRO, error) {
+	return s.storage.GetSubscribersDataJoined(ctx)
 }
 
 func (s *subscriptionService) SubscribeToEvent(ctx context.Context, subscriberID uint64, eventID uint64) error {

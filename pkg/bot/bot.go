@@ -14,6 +14,7 @@ type Bot interface {
 	StartKeyboard() tg.ReplyKeyboardMarkup
 	Send(ch tg.Chattable) (*tg.Message, error)
 	SoftSend(ch tg.Chattable) error
+	ClosePoll()
 }
 
 type bot struct {
@@ -31,7 +32,7 @@ func NewBot(token string, logger *zap.SugaredLogger) (Bot, error) {
 
 	updateCfg := tg.NewUpdate(0)
 	updateCfg.Timeout = 60
-
+	//client.Debug = true
 	return &bot{
 		logger:    logger,
 		client:    client,
@@ -82,4 +83,8 @@ func (b *bot) StartKeyboard() tg.ReplyKeyboardMarkup {
 	}
 	row := []tg.KeyboardButton{bt}
 	return tg.NewReplyKeyboard(row)
+}
+
+func (b *bot) ClosePoll() {
+	b.client.StopReceivingUpdates()
 }
