@@ -1,11 +1,9 @@
 package subscription
 
 import (
-	"context"
 	"net/http"
 	"reflect"
 	"strconv"
-	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
@@ -29,7 +27,10 @@ type Transport interface {
 	Fire(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	Subscribe(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	Cancel(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
-	GetAll(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
+	RegisterSubscriber(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
+	GetSubscribersJoined(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
+	GetAvailableEvents(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
+	GetSubscribersWithoutSubs(w http.ResponseWriter, r *http.Request, _ httprouter.Params)
 	InitRoutes(router *httprouter.Router)
 }
 
@@ -45,16 +46,18 @@ type subscriptionTransport struct {
 
 func (s *subscriptionTransport) InitRoutes(router *httprouter.Router) {
 	router.POST("/api/events/fire/:eventName", recovery_middleware.Recover(s.logger, s.eventsMiddlewares.DoesEventExist(s.Fire)))
-	router.POST("/api/subscriptions", s.Subscribe)
-	router.DELETE("/api/subscriptions/:subscriptionId", s.Cancel)
-	router.GET("/api/subscriptions", recovery_middleware.Recover(s.logger, s.GetAll))
+	router.GET("/api/events", recovery_middleware.Recover(s.logger, s.GetAvailableEvents))
+	router.POST("/api/subscriptions", recovery_middleware.Recover(s.logger, s.Subscribe))
+	router.DELETE("/api/subscriptions/:subscriptionId", recovery_middleware.Recover(s.logger, s.Cancel))
+	router.GET("/api/subscriptions/subscribers/joined", recovery_middleware.Recover(s.logger, s.GetSubscribersJoined))
+	router.GET("/api/subscriptions/subscribers", recovery_middleware.Recover(s.logger, s.GetSubscribersWithoutSubs))
+	router.POST("/api/subscriptions/subscribers", recovery_middleware.Recover(s.logger, s.RegisterSubscriber))
 }
 
 func NewSubscriptionTransport(logger *zap.SugaredLogger,
 	service Service,
 	eventMiddlewares *middleware.EventsMiddlewares,
 	eventsService events.Service,
-
 	templateProvider template.Provider,
 	formatter formatter.Formatter,
 	bot bot.Bot) Transport {
@@ -68,6 +71,69 @@ func NewSubscriptionTransport(logger *zap.SugaredLogger,
 		bot:                 bot,
 		formatter:           formatter,
 	}
+}
+
+func (s *subscriptionTransport) RegisterSubscriber(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	s.logger.Debug("register subscriber")
+
+	var inp dto.RegisterSubscriberDto
+
+	err := binder.Bind(r.Body, &inp)
+	if err != nil {
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Error(err.Error())
+		return
+	}
+
+	ok := validation.ValidatePhoneNumber(inp.PhoneNumber)
+	if ok != true {
+		httpErrors.MakeErrorResponse(w, httpErrors.ErrInvalidPayload)
+		s.logger.Debug("invalid phone number")
+		return
+	}
+
+	_, err = s.subscriptionService.RegisterSubscriber(r.Context(), inp.PhoneNumber)
+	if err != nil {
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Error(err.Error())
+		return
+	}
+
+	httpRes.Created(w)
+}
+
+func (s *subscriptionTransport) GetSubscribersWithoutSubs(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+
+	s.logger.Debug("get subscribers without subs")
+
+	subscribers, err := s.subscriptionService.GetSubscribersWithoutSubs(r.Context())
+	if err != nil {
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Error(err.Error())
+		return
+	}
+
+	httpRes.Json(s.logger, w, http.StatusOK, httpRes.JSON{
+		"subscribers": subscribers,
+	})
+	return
+}
+
+func (s *subscriptionTransport) GetAvailableEvents(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+
+	s.logger.Debug("get available events")
+
+	evnts, err := s.eventsService.GetAvailableEvents(r.Context())
+	if err != nil {
+		httpErrors.MakeErrorResponse(w, err)
+		s.logger.Error(err.Error())
+		return
+	}
+
+	httpRes.Json(s.logger, w, http.StatusOK, httpRes.JSON{
+		"events": evnts,
+	})
+
 }
 
 func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -185,8 +251,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 
 	var inp dto.SubscribeToEventInp
-	ctx, cancel := context.WithTimeout(r.Context(), time.Second*5)
-	defer cancel()
+	ctx := r.Context()
 
 	err := binder.Bind(r.Body, &inp)
 	if err != nil {
@@ -275,8 +340,8 @@ func (s *subscriptionTransport) Cancel(w http.ResponseWriter, r *http.Request, p
 	return
 }
 
-func (s *subscriptionTransport) GetAll(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	s.logger.Debug("get all subscribers")
+func (s *subscriptionTransport) GetSubscribersJoined(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	s.logger.Debug("get all subscribers joined")
 
 	subscribersData, err := s.subscriptionService.GetSubscribersDataJoined(r.Context())
 	if err != nil {
