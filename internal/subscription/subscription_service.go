@@ -17,6 +17,7 @@ type Service interface {
 	GetTelegramSubscribers(ctx context.Context, phoneNumbers []string) ([]*entity.TelegramSubscriber, error)
 	GetSubscription(ctx context.Context, subscriberID uint64, eventID uint64) (*entity.Subscription, error)
 	GetTelegramSubscriber(ctx context.Context, phoneNumber string) (*entity.TelegramSubscriber, error)
+	GetSubscribersWithoutSubs(ctx context.Context) ([]*response_object.SubscriberRO, error)
 	RegisterSubscriber(ctx context.Context, phoneNumber string) (uint64, error)
 	RegisterTelegramSubscriber(ctx context.Context, telegramID int64, subscriberID uint64) error
 	SubscribeToEvent(ctx context.Context, subscriberID uint64, eventID uint64) error
@@ -31,6 +32,10 @@ type subscriptionService struct {
 
 func NewSubscriptionService(logger *zap.SugaredLogger, storage Storage) Service {
 	return &subscriptionService{logger: logger, storage: storage}
+}
+
+func (s *subscriptionService) GetSubscribersWithoutSubs(ctx context.Context) ([]*response_object.SubscriberRO, error) {
+	return s.storage.GetSubscribersWithoutSubs(ctx)
 }
 
 func (s *subscriptionService) GetSubscribersDataJoined(ctx context.Context) ([]*response_object.SubscriberRO, error) {

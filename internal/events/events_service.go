@@ -20,6 +20,7 @@ type Service interface {
 	ReadEvents(ctx context.Context) error
 	DoesExist(ctx context.Context, eventName string) (uint64, error)
 	RegisterEvent(ctx context.Context, e entity.Event) error
+	GetAvailableEvents(ctx context.Context) ([]*entity.Event, error)
 }
 
 type eventService struct {
@@ -32,6 +33,9 @@ func NewEventsService(logger *zap.SugaredLogger, storage Storage, templateProvid
 	return &eventService{logger: logger, eventStorage: storage, templateProvider: templateProvider}
 }
 
+func (s *eventService) GetAvailableEvents(ctx context.Context) ([]*entity.Event, error) {
+	return s.eventStorage.GetAvailableEvents(ctx)
+}
 func (s *eventService) RegisterEvent(ctx context.Context, e entity.Event) error {
 	return s.eventStorage.RegisterEvent(ctx, e)
 }
