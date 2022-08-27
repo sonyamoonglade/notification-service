@@ -339,7 +339,7 @@ func (s *subscriptionStorage) GetTelegramSubscribers(ctx context.Context, phoneN
 	mainq := fmt.Sprintf(
 		"SELECT tgsub.telegram_id, tgsub.subscriber_id FROM %s tgsub JOIN %s sub ON tgsub.subscriber_id = sub.subscriber_id WHERE %s",
 		tables.TelegramSubscribers, tables.Subscribers, whereq)
-	fmt.Println(mainq)
+
 	c, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return nil, err

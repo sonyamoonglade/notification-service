@@ -25,7 +25,7 @@ func NoContent(w http.ResponseWriter) {
 }
 
 func Internal(w http.ResponseWriter) {
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 	w.Header().Add("Content-Type", "text/plain")
 	w.Write([]byte("Internal error"))
 	return
