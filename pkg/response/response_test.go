@@ -1,4 +1,4 @@
-package http_res_test
+package response_test
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/sonyamoonglade/notification-service/pkg/http_res"
+	"github.com/sonyamoonglade/notification-service/pkg/response"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -16,7 +16,7 @@ func TestInternal(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	http_res.Internal(w)
+	response.Internal(w)
 
 	expectedBody := "Internal error"
 	expectedCode := 500
@@ -42,7 +42,7 @@ func TestJson(t *testing.T) {
 	}
 	expectedContent, _ := json.Marshal(content)
 
-	http_res.Json(logger, w, http.StatusOK, content)
+	response.Json(logger, w, http.StatusOK, content)
 
 	respBytes, err := io.ReadAll(w.Body)
 	assert.NoError(t, err)

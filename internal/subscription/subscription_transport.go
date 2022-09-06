@@ -17,8 +17,8 @@ import (
 	"github.com/sonyamoonglade/notification-service/pkg/bot"
 	"github.com/sonyamoonglade/notification-service/pkg/formatter"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
-	"github.com/sonyamoonglade/notification-service/pkg/http_res"
 	"github.com/sonyamoonglade/notification-service/pkg/recovery_middleware"
+	"github.com/sonyamoonglade/notification-service/pkg/response"
 	"github.com/sonyamoonglade/notification-service/pkg/template"
 	"go.uber.org/zap"
 )
@@ -99,7 +99,7 @@ func (s *subscriptionTransport) RegisterSubscriber(w http.ResponseWriter, r *htt
 		return
 	}
 
-	http_res.Created(w)
+	response.Created(w)
 }
 
 func (s *subscriptionTransport) GetSubscribersWithoutSubs(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -113,7 +113,7 @@ func (s *subscriptionTransport) GetSubscribersWithoutSubs(w http.ResponseWriter,
 		return
 	}
 
-	http_res.Json(s.logger, w, http.StatusOK, http_res.JSON{
+	response.Json(s.logger, w, http.StatusOK, response.JSON{
 		"subscribers": subscribers,
 	})
 	return
@@ -130,7 +130,7 @@ func (s *subscriptionTransport) GetAvailableEvents(w http.ResponseWriter, r *htt
 		return
 	}
 
-	http_res.Json(s.logger, w, http.StatusOK, http_res.JSON{
+	response.Json(s.logger, w, http.StatusOK, response.JSON{
 		"events": evnts,
 	})
 
@@ -148,7 +148,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 	}
 	//No actual subscribers whatsoever, so the rest of the code is a waste
 	if len(subscribers) == 0 {
-		http_res.NoContent(w)
+		response.NoContent(w)
 		return
 	}
 
@@ -162,7 +162,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 
 	//No actual subscribers in telegram, so the rest of the code is a waste
 	if len(telegramSubs) == 0 {
-		http_res.NoContent(w)
+		response.NoContent(w)
 		return
 	}
 
@@ -244,7 +244,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		}
 	}
 
-	http_res.Ok(w)
+	response.Ok(w)
 	return
 }
 
@@ -308,7 +308,7 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 	}
 	s.logger.Debugf("subscriber with phone %s has subscribed to event %d", inp.PhoneNumber, eventID)
 
-	http_res.Created(w)
+	response.Created(w)
 	return
 }
 
@@ -336,7 +336,7 @@ func (s *subscriptionTransport) Cancel(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
-	http_res.Ok(w)
+	response.Ok(w)
 	return
 }
 
@@ -350,7 +350,7 @@ func (s *subscriptionTransport) GetSubscribersJoined(w http.ResponseWriter, r *h
 		return
 	}
 
-	http_res.Json(s.logger, w, http.StatusOK, http_res.JSON{
+	response.Json(s.logger, w, http.StatusOK, response.JSON{
 		"subscribers": subscribersData,
 	})
 	return
