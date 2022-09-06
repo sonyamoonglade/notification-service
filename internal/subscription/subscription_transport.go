@@ -17,7 +17,7 @@ import (
 	"github.com/sonyamoonglade/notification-service/pkg/bot"
 	"github.com/sonyamoonglade/notification-service/pkg/formatter"
 	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
-	"github.com/sonyamoonglade/notification-service/pkg/httpRes"
+	"github.com/sonyamoonglade/notification-service/pkg/http_res"
 	"github.com/sonyamoonglade/notification-service/pkg/recovery_middleware"
 	"github.com/sonyamoonglade/notification-service/pkg/template"
 	"go.uber.org/zap"
@@ -99,7 +99,7 @@ func (s *subscriptionTransport) RegisterSubscriber(w http.ResponseWriter, r *htt
 		return
 	}
 
-	httpRes.Created(w)
+	http_res.Created(w)
 }
 
 func (s *subscriptionTransport) GetSubscribersWithoutSubs(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -113,7 +113,7 @@ func (s *subscriptionTransport) GetSubscribersWithoutSubs(w http.ResponseWriter,
 		return
 	}
 
-	httpRes.Json(s.logger, w, http.StatusOK, httpRes.JSON{
+	http_res.Json(s.logger, w, http.StatusOK, http_res.JSON{
 		"subscribers": subscribers,
 	})
 	return
@@ -130,7 +130,7 @@ func (s *subscriptionTransport) GetAvailableEvents(w http.ResponseWriter, r *htt
 		return
 	}
 
-	httpRes.Json(s.logger, w, http.StatusOK, httpRes.JSON{
+	http_res.Json(s.logger, w, http.StatusOK, http_res.JSON{
 		"events": evnts,
 	})
 
@@ -148,7 +148,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 	}
 	//No actual subscribers whatsoever, so the rest of the code is a waste
 	if len(subscribers) == 0 {
-		httpRes.NoContent(w)
+		http_res.NoContent(w)
 		return
 	}
 
@@ -162,7 +162,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 
 	//No actual subscribers in telegram, so the rest of the code is a waste
 	if len(telegramSubs) == 0 {
-		httpRes.NoContent(w)
+		http_res.NoContent(w)
 		return
 	}
 
@@ -206,7 +206,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		}
 		fmtTmpl = s.formatter.Format(tmpl,
 			p.OrderID,
-			p.TotalCartPrice)
+			p.Amount)
 
 		break
 	case reflect.TypeOf(payload.MasterOrderCreatePayload{}):
@@ -227,7 +227,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 			p.OrderID,
 			p.Username,
 			p.PhoneNumber,
-			p.TotalCartPrice)
+			p.Amount)
 
 		break
 	}
@@ -244,7 +244,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		}
 	}
 
-	httpRes.Ok(w)
+	http_res.Ok(w)
 	return
 }
 
@@ -308,7 +308,7 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 	}
 	s.logger.Debugf("subscriber with phone %s has subscribed to event %d", inp.PhoneNumber, eventID)
 
-	httpRes.Created(w)
+	http_res.Created(w)
 	return
 }
 
@@ -336,7 +336,7 @@ func (s *subscriptionTransport) Cancel(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
-	httpRes.Ok(w)
+	http_res.Ok(w)
 	return
 }
 
@@ -350,7 +350,7 @@ func (s *subscriptionTransport) GetSubscribersJoined(w http.ResponseWriter, r *h
 		return
 	}
 
-	httpRes.Json(s.logger, w, http.StatusOK, httpRes.JSON{
+	http_res.Json(s.logger, w, http.StatusOK, http_res.JSON{
 		"subscribers": subscribersData,
 	})
 	return

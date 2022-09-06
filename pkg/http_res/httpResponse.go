@@ -1,4 +1,4 @@
-package httpRes
+package http_res
 
 import (
 	"encoding/json"
