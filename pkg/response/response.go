@@ -2,6 +2,7 @@ package response
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -43,4 +44,16 @@ func Json(logger *zap.SugaredLogger, w http.ResponseWriter, code int, content JS
 	w.WriteHeader(code)
 	w.Write(bytes)
 	return
+}
+
+func Binary(w http.ResponseWriter, buff []byte, mime string) {
+	ct := "application/octet-stream"
+	if mime != "" {
+		ct = mime
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Add("Content-Type", ct)
+	w.Header().Add("Content-Length", fmt.Sprintf("%d", len(buff)))
+	w.Write(buff)
 }
