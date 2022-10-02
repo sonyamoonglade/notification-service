@@ -17,9 +17,7 @@ RUN mkdir bin && \
     touch logs/log.txt
 
 
-
 COPY --from=builder /app/notification/bin ./bin
-COPY --from=builder /app/notification/prod.config.yaml .
 COPY --from=builder /app/notification/events.json .
 COPY --from=builder /app/notification/templates.json .
 

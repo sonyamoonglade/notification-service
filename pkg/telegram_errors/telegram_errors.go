@@ -1,4 +1,4 @@
-package tgErrors
+package telegram_errors
 
 import "github.com/pkg/errors"
 

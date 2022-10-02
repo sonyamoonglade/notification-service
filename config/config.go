@@ -2,13 +2,14 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/spf13/viper"
 )
 
 const (
-	DatabaseURL = "DB_URL"
+	DatabaseURL = "DATABASE_URL"
 	BotToken    = "BOT_TOKEN"
 	Env         = "ENV"
 )
@@ -29,12 +30,12 @@ func GetAppConfig() (AppConfig, error) {
 
 	dbURL, ok := os.LookupEnv(DatabaseURL)
 	if ok != true {
-		return AppConfig{}, errors.New("missing database url")
+		return AppConfig{}, fmt.Errorf("missing %s", DatabaseURL)
 	}
 
 	botToken, ok := os.LookupEnv(BotToken)
 	if ok != true {
-		return AppConfig{}, errors.New("missing bot token")
+		return AppConfig{}, fmt.Errorf("missing %s", BotToken)
 	}
 
 	appPort := v.GetString("app.port")
@@ -43,7 +44,7 @@ func GetAppConfig() (AppConfig, error) {
 	}
 	env, ok := os.LookupEnv(Env)
 	if ok != true {
-		return AppConfig{}, errors.New("missing env variable")
+		return AppConfig{}, fmt.Errorf("missing %s", Env)
 	}
 
 	return AppConfig{

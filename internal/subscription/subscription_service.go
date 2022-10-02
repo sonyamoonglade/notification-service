@@ -4,9 +4,10 @@ import (
 	"context"
 
 	"github.com/sonyamoonglade/notification-service/internal/entity"
+	"github.com/sonyamoonglade/notification-service/internal/storage"
 	"github.com/sonyamoonglade/notification-service/internal/subscription/response_object"
-	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
-	"github.com/sonyamoonglade/notification-service/pkg/tgErrors"
+	"github.com/sonyamoonglade/notification-service/pkg/http_errors"
+	"github.com/sonyamoonglade/notification-service/pkg/telegram_errors"
 	"go.uber.org/zap"
 )
 
@@ -26,11 +27,11 @@ type Service interface {
 }
 
 type subscriptionService struct {
-	storage Storage
+	storage storage.DBStorage
 	logger  *zap.SugaredLogger
 }
 
-func NewSubscriptionService(logger *zap.SugaredLogger, storage Storage) Service {
+func NewSubscriptionService(logger *zap.SugaredLogger, storage storage.DBStorage) Service {
 	return &subscriptionService{logger: logger, storage: storage}
 }
 
@@ -49,7 +50,7 @@ func (s *subscriptionService) SubscribeToEvent(ctx context.Context, subscriberID
 	}
 	s.logger.Debugf("%d", subscriptionID)
 	if subscriptionID == 0 {
-		return httpErrors.ErrSubscriptionAlreadyExists
+		return http_errors.ErrSubscriptionAlreadyExists
 	}
 	return nil
 }
@@ -61,7 +62,7 @@ func (s *subscriptionService) GetSubscription(ctx context.Context, subscriberID 
 	}
 	//No such subscription
 	if subscription == nil {
-		return nil, httpErrors.ErrSubscriptionDoesNotExist
+		return nil, http_errors.ErrSubscriptionDoesNotExist
 	}
 
 	return subscription, nil
@@ -82,7 +83,7 @@ func (s *subscriptionService) GetSubscriberByPhone(ctx context.Context, phoneNum
 	}
 	//No such subscriber
 	if sub == nil {
-		return nil, httpErrors.ErrSubscriberDoesNotExist
+		return nil, http_errors.ErrSubscriberDoesNotExist
 	}
 	return sub, nil
 }
@@ -105,7 +106,7 @@ func (s *subscriptionService) RegisterTelegramSubscriber(ctx context.Context, te
 		return err
 	}
 	if ok != true {
-		return tgErrors.ErrTgSubscriberAlreadyExists
+		return telegram_errors.ErrTgSubscriberAlreadyExists
 	}
 
 	return nil
@@ -117,7 +118,7 @@ func (s *subscriptionService) GetTelegramSubscriber(ctx context.Context, phoneNu
 		return nil, err
 	}
 	if tgsub == nil {
-		return nil, tgErrors.ErrNoSuchTelegramSubscriber
+		return nil, telegram_errors.ErrNoSuchTelegramSubscriber
 	}
 
 	return tgsub, nil
@@ -133,7 +134,7 @@ func (s *subscriptionService) CancelSubscription(ctx context.Context, subscripti
 		return err
 	}
 	if ok != true {
-		return httpErrors.ErrSubscriptionDoesNotExist
+		return http_errors.ErrSubscriptionDoesNotExist
 	}
 	return nil
 }

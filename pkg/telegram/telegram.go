@@ -9,9 +9,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sonyamoonglade/notification-service/internal/subscription"
 	"github.com/sonyamoonglade/notification-service/pkg/bot"
-	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
+	"github.com/sonyamoonglade/notification-service/pkg/http_errors"
 	"github.com/sonyamoonglade/notification-service/pkg/message"
-	"github.com/sonyamoonglade/notification-service/pkg/tgErrors"
+	"github.com/sonyamoonglade/notification-service/pkg/telegram_errors"
 	"go.uber.org/zap"
 )
 
@@ -45,7 +45,7 @@ func (t *telegramListener) handleContact(ctx context.Context, chatID int64, cnt 
 	sub, err := t.subscriptionService.GetSubscriberByPhone(ctx, phoneNumber)
 	if err != nil {
 		//Exit here in case there's no registered subscriber by given number
-		if errors.Is(err, httpErrors.ErrSubscriberDoesNotExist) {
+		if errors.Is(err, http_errors.ErrSubscriberDoesNotExist) {
 			text := message.Format(message.NoSuchSubscriber, phoneNumber)
 			msg := tg.NewMessage(chatID, text)
 			t.logger.Debugf("no such subscriber %s", phoneNumber)
@@ -79,7 +79,7 @@ func (t *telegramListener) handleContact(ctx context.Context, chatID int64, cnt 
 	err = t.subscriptionService.RegisterTelegramSubscriber(ctx, chatID, sub.SubscriberID)
 	if err != nil {
 		//Bot already knows specified telegramSubscriber by given phoneNumber
-		if errors.Is(err, tgErrors.ErrTgSubscriberAlreadyExists) {
+		if errors.Is(err, telegram_errors.ErrTgSubscriberAlreadyExists) {
 			text := message.Format(message.IKnowYou, phoneNumber)
 			msg := tg.NewMessage(chatID, text)
 

@@ -11,13 +11,12 @@ import (
 	"github.com/sonyamoonglade/delivery-service/pkg/validation"
 	"github.com/sonyamoonglade/notification-service/internal/entity"
 	"github.com/sonyamoonglade/notification-service/internal/events"
-	"github.com/sonyamoonglade/notification-service/internal/events/middleware"
+	"github.com/sonyamoonglade/notification-service/internal/events/middlewares"
 	"github.com/sonyamoonglade/notification-service/internal/events/payload"
 	"github.com/sonyamoonglade/notification-service/internal/subscription/dto"
 	"github.com/sonyamoonglade/notification-service/pkg/bot"
 	"github.com/sonyamoonglade/notification-service/pkg/formatter"
-	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
-	"github.com/sonyamoonglade/notification-service/pkg/recovery_middleware"
+	"github.com/sonyamoonglade/notification-service/pkg/http_errors"
 	"github.com/sonyamoonglade/notification-service/pkg/response"
 	"github.com/sonyamoonglade/notification-service/pkg/template"
 	"go.uber.org/zap"
@@ -39,24 +38,24 @@ type subscriptionTransport struct {
 	eventsService       events.Service
 	templateProvider    template.Provider
 	formatter           formatter.Formatter
+	de                  *event_middlewares.DoesExist
 	logger              *zap.SugaredLogger
-	eventsMiddlewares   *middleware.EventsMiddlewares
 	bot                 bot.Bot
 }
 
 func (s *subscriptionTransport) InitRoutes(router *httprouter.Router) {
-	router.POST("/api/events/fire/:eventName", recovery_middleware.Recover(s.logger, s.eventsMiddlewares.DoesEventExist(s.Fire)))
-	router.GET("/api/events", recovery_middleware.Recover(s.logger, s.GetAvailableEvents))
-	router.POST("/api/subscriptions", recovery_middleware.Recover(s.logger, s.Subscribe))
-	router.DELETE("/api/subscriptions/:subscriptionId", recovery_middleware.Recover(s.logger, s.Cancel))
-	router.GET("/api/subscriptions/subscribers/joined", recovery_middleware.Recover(s.logger, s.GetSubscribersJoined))
-	router.GET("/api/subscriptions/subscribers", recovery_middleware.Recover(s.logger, s.GetSubscribersWithoutSubs))
-	router.POST("/api/subscriptions/subscribers", recovery_middleware.Recover(s.logger, s.RegisterSubscriber))
+	router.POST("/api/events/fire/:eventName", s.de.Check(s.Fire))
+	router.GET("/api/events", s.GetAvailableEvents)
+	router.POST("/api/subscriptions", s.Subscribe)
+	router.DELETE("/api/subscriptions/:subscriptionId", s.Cancel)
+	router.GET("/api/subscriptions/subscribers/joined", s.GetSubscribersJoined)
+	router.GET("/api/subscriptions/subscribers", s.GetSubscribersWithoutSubs)
+	router.POST("/api/subscriptions/subscribers", s.RegisterSubscriber)
 }
 
 func NewSubscriptionTransport(logger *zap.SugaredLogger,
 	service Service,
-	eventMiddlewares *middleware.EventsMiddlewares,
+	de *event_middlewares.DoesExist,
 	eventsService events.Service,
 	templateProvider template.Provider,
 	formatter formatter.Formatter,
@@ -65,7 +64,7 @@ func NewSubscriptionTransport(logger *zap.SugaredLogger,
 	return &subscriptionTransport{
 		logger:              logger,
 		subscriptionService: service,
-		eventsMiddlewares:   eventMiddlewares,
+		de:                  de,
 		eventsService:       eventsService,
 		templateProvider:    templateProvider,
 		bot:                 bot,
@@ -80,21 +79,21 @@ func (s *subscriptionTransport) RegisterSubscriber(w http.ResponseWriter, r *htt
 
 	err := binder.Bind(r.Body, &inp)
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
 
 	ok := validation.ValidatePhoneNumber(inp.PhoneNumber)
 	if ok != true {
-		httpErrors.MakeErrorResponse(w, httpErrors.ErrInvalidPayload)
+		http_errors.MakeErrorResponse(w, http_errors.ErrInvalidPayload)
 		s.logger.Debug("invalid phone number")
 		return
 	}
 
 	_, err = s.subscriptionService.RegisterSubscriber(r.Context(), inp.PhoneNumber)
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
@@ -108,7 +107,7 @@ func (s *subscriptionTransport) GetSubscribersWithoutSubs(w http.ResponseWriter,
 
 	subscribers, err := s.subscriptionService.GetSubscribersWithoutSubs(r.Context())
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
@@ -125,7 +124,7 @@ func (s *subscriptionTransport) GetAvailableEvents(w http.ResponseWriter, r *htt
 
 	evnts, err := s.eventsService.GetAvailableEvents(r.Context())
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
@@ -142,7 +141,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 
 	subscribers, err := s.subscriptionService.GetEventSubscribers(ctx, eventID)
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
@@ -155,7 +154,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 	subsPhones := s.subscriptionService.SelectPhones(subscribers)
 	telegramSubs, err := s.subscriptionService.GetTelegramSubscribers(ctx, subsPhones)
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
@@ -168,7 +167,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 
 	tmpl, err := s.templateProvider.Find(eventID)
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
@@ -187,7 +186,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		err := binder.Bind(r.Body, &p)
 		if err != nil {
 			s.logger.Error(err.Error())
-			httpErrors.MakeErrorResponse(w, err)
+			http_errors.MakeErrorResponse(w, err)
 			return
 		}
 		fmtTmpl = s.formatter.Format(
@@ -201,7 +200,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		err := binder.Bind(r.Body, &p)
 		if err != nil {
 			s.logger.Error(err.Error())
-			httpErrors.MakeErrorResponse(w, err)
+			http_errors.MakeErrorResponse(w, err)
 			return
 		}
 		fmtTmpl = s.formatter.Format(tmpl,
@@ -214,13 +213,13 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		err := binder.Bind(r.Body, &p)
 		if err != nil {
 			s.logger.Error(err.Error())
-			httpErrors.MakeErrorResponse(w, err)
+			http_errors.MakeErrorResponse(w, err)
 			return
 		}
 
 		ok := validation.ValidatePhoneNumber(p.PhoneNumber)
 		if ok != true {
-			httpErrors.MakeErrorResponse(w, httpErrors.ErrInvalidPayload)
+			http_errors.MakeErrorResponse(w, http_errors.ErrInvalidPayload)
 			return
 		}
 		fmtTmpl = s.formatter.Format(tmpl,
@@ -238,7 +237,7 @@ func (s *subscriptionTransport) Fire(w http.ResponseWriter, r *http.Request, _ h
 		err := s.bot.Notify(sub.TelegramID, fmtTmpl)
 		if err != nil {
 			//todo: if err occurs there bot must send warning msg to admin
-			httpErrors.MakeErrorResponse(w, err)
+			http_errors.MakeErrorResponse(w, err)
 			s.logger.Error(err.Error())
 			return
 		}
@@ -255,22 +254,22 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 
 	err := binder.Bind(r.Body, &inp)
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
 
 	ok := validation.ValidatePhoneNumber(inp.PhoneNumber)
 	if ok != true {
-		err = httpErrors.ErrInvalidPayload
-		httpErrors.MakeErrorResponse(w, err)
+		err = http_errors.ErrInvalidPayload
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Debug(err.Error())
 		return
 	}
 
 	eventID, err := s.eventsService.DoesExist(ctx, inp.EventName)
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
@@ -278,15 +277,15 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 	subscriber, err := s.subscriptionService.GetSubscriberByPhone(ctx, inp.PhoneNumber)
 	if err != nil {
 		//If any internal error not SubscriberDoesNotExist
-		if !errors.Is(err, httpErrors.ErrSubscriberDoesNotExist) {
-			httpErrors.MakeErrorResponse(w, err)
+		if !errors.Is(err, http_errors.ErrSubscriberDoesNotExist) {
+			http_errors.MakeErrorResponse(w, err)
 			s.logger.Error(err.Error())
 			return
 		}
 		//Register subscriber
 		regSubID, err := s.subscriptionService.RegisterSubscriber(ctx, inp.PhoneNumber)
 		if err != nil {
-			httpErrors.MakeErrorResponse(w, err)
+			http_errors.MakeErrorResponse(w, err)
 			s.logger.Error(err.Error())
 			return
 		}
@@ -302,7 +301,7 @@ func (s *subscriptionTransport) Subscribe(w http.ResponseWriter, r *http.Request
 	//Create subscription
 	err = s.subscriptionService.SubscribeToEvent(ctx, subscriber.SubscriberID, eventID)
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
@@ -317,21 +316,21 @@ func (s *subscriptionTransport) Cancel(w http.ResponseWriter, r *http.Request, p
 	subscriptionIDstr := params.ByName("subscriptionId")
 
 	if subscriptionIDstr == "" {
-		httpErrors.MakeErrorResponse(w, httpErrors.ErrNoSubscriptionID)
+		http_errors.MakeErrorResponse(w, http_errors.ErrNoSubscriptionID)
 		s.logger.Debug("missing subscription id")
 		return
 	}
 
 	subscriptionID, err := strconv.ParseUint(subscriptionIDstr, 10, 64)
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
 
 	err = s.subscriptionService.CancelSubscription(r.Context(), subscriptionID)
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}
@@ -345,7 +344,7 @@ func (s *subscriptionTransport) GetSubscribersJoined(w http.ResponseWriter, r *h
 
 	subscribersData, err := s.subscriptionService.GetSubscribersDataJoined(r.Context())
 	if err != nil {
-		httpErrors.MakeErrorResponse(w, err)
+		http_errors.MakeErrorResponse(w, err)
 		s.logger.Error(err.Error())
 		return
 	}

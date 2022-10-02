@@ -1,4 +1,4 @@
-package middleware
+package event_middlewares
 
 import (
 	"context"
@@ -6,20 +6,23 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/sonyamoonglade/notification-service/internal/events"
-	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
+	"github.com/sonyamoonglade/notification-service/pkg/http_errors"
 	"go.uber.org/zap"
 )
 
-type EventsMiddlewares struct {
-	eventService events.Service
+type DoesExist struct {
 	logger       *zap.SugaredLogger
+	eventService events.Service
 }
 
-func NewEventsMiddlewares(logger *zap.SugaredLogger, service events.Service) *EventsMiddlewares {
-	return &EventsMiddlewares{eventService: service, logger: logger}
+func NewDoesExist(logger *zap.SugaredLogger, eventService events.Service) *DoesExist {
+	return &DoesExist{
+		logger:       logger,
+		eventService: eventService,
+	}
 }
 
-func (m *EventsMiddlewares) DoesEventExist(h httprouter.Handle) httprouter.Handle {
+func (m *DoesExist) Check(h httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
 		ctx := r.Context()
 
@@ -27,14 +30,14 @@ func (m *EventsMiddlewares) DoesEventExist(h httprouter.Handle) httprouter.Handl
 
 		if eventName == "" {
 			m.logger.Debug("empty eventName string")
-			httpErrors.MakeErrorResponse(w, httpErrors.ErrNoEventName)
+			http_errors.MakeErrorResponse(w, http_errors.ErrNoEventName)
 			return
 		}
 
 		eventID, err := m.eventService.DoesExist(ctx, eventName)
 		if err != nil {
 			m.logger.Error(err.Error())
-			httpErrors.MakeErrorResponse(w, err)
+			http_errors.MakeErrorResponse(w, err)
 			return
 		}
 

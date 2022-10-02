@@ -10,10 +10,6 @@ import (
 	"github.com/sonyamoonglade/notification-service/internal/entity"
 )
 
-func newErrtemplateNotFound(eventID uint64) error {
-	return errors.New(fmt.Sprintf("template for event %d not found", eventID))
-}
-
 var path = "./templates.json"
 
 type Provider interface {
@@ -32,7 +28,7 @@ func NewTemplateProvider() Provider {
 func (t *templateProvider) Find(eventID uint64) (string, error) {
 	templ, ok := t.store[eventID]
 	if ok != true {
-		return "", newErrtemplateNotFound(eventID)
+		return "", fmt.Errorf("template for event %d not found", eventID)
 	}
 	return templ, nil
 }
