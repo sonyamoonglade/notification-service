@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -11,40 +12,39 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/sonyamoonglade/delivery-service/pkg/logging"
 	"github.com/sonyamoonglade/notification-service/config"
+	"github.com/sonyamoonglade/notification-service/internal/app_middlewares"
 	"github.com/sonyamoonglade/notification-service/internal/events"
-	"github.com/sonyamoonglade/notification-service/internal/events/middleware"
+	"github.com/sonyamoonglade/notification-service/internal/storage"
 	"github.com/sonyamoonglade/notification-service/internal/subscription"
 	"github.com/sonyamoonglade/notification-service/pkg/bot"
 	"github.com/sonyamoonglade/notification-service/pkg/formatter"
+	"github.com/sonyamoonglade/notification-service/pkg/logging"
 	"github.com/sonyamoonglade/notification-service/pkg/postgres"
 	"github.com/sonyamoonglade/notification-service/pkg/server"
 	"github.com/sonyamoonglade/notification-service/pkg/telegram"
 	"github.com/sonyamoonglade/notification-service/pkg/template"
-	"go.uber.org/zap"
 )
 
 func main() {
 
 	log.Println("booting an application")
 
-	exit := make(chan os.Signal, 1)
-	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	logsPath, debug, strictMode := parseFlags()
 
-	//Todo: get dev mode from env
-	logger, err := logging.WithCfg(&logging.Config{
-		Level:    zap.NewAtomicLevelAt(zap.DebugLevel),
-		DevMode:  true,
+	logger, err := logging.WithConfig(&logging.Config{
+		Strict:   strictMode,
+		LogsPath: logsPath,
+		Debug:    debug,
 		Encoding: logging.JSON,
 	})
 	if err != nil {
-		log.Fatalf("could not get zap logger. %s", err.Error())
+		log.Fatalf("could not get logger. %s", err.Error())
 	}
 
 	//Make sure to load env variables on local development
 	if err := godotenv.Load(".env.local"); err != nil {
-		logger.Errorf("could not load .env.local %s", err.Error())
+		logger.Warnf("could not load .env.local %s", err.Error())
 	}
 
 	appCfg, err := config.GetAppConfig()
@@ -52,15 +52,10 @@ func main() {
 		logger.Fatalf("could not get app config. %s", err.Error())
 	}
 
-	logger.Info("initialized config")
-	if appCfg.Env == "development" {
-		logger.Info("environment variables are loaded (development only)")
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	pg, err := postgres.New(logger, ctx, appCfg.DatabaseURL)
+	pg, err := postgres.New(ctx, appCfg.DatabaseURL)
 	if err != nil {
 		logger.Fatalf("could not create pool. %s", err.Error())
 	}
@@ -81,16 +76,16 @@ func main() {
 		logger.Fatalf("could not read templates. %s", err.Error())
 	}
 
-	eventsStorage := events.NewEventStorage(logger, pg.Pool)
-	eventsService := events.NewEventsService(logger, eventsStorage, templateProvider)
-	eventsMiddleware := middleware.NewEventsMiddlewares(logger, eventsService)
+	pgStorage := storage.NewPostgresStorage(logger, pg.Pool)
 
-	subscriptionStorage := subscription.NewSubscriptionStorage(logger, pg.Pool)
-	subscriptionService := subscription.NewSubscriptionService(logger, subscriptionStorage)
+	eventsService := events.NewEventsService(logger, pgStorage, templateProvider)
 
+	mw := app_middlewares.New(logger, eventsService)
+
+	subscriptionService := subscription.NewSubscriptionService(logger, pgStorage)
 	subscriptionTransport := subscription.NewSubscriptionTransport(logger,
 		subscriptionService,
-		eventsMiddleware,
+		mw.DoesExist,
 		eventsService,
 		templateProvider,
 		appFmt,
@@ -118,6 +113,9 @@ func main() {
 	}()
 	logger.Infof("server has started on port: %s", appCfg.AppPort)
 
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
 	<-exit
 	//Graceful shutdown
 	logger.Info("Shutting down gracefully...")
@@ -140,4 +138,15 @@ func main() {
 	}
 	logger.Info("server has shutdown")
 
+}
+
+func parseFlags() (string, bool, bool) {
+
+	logsPath := flag.String("logs-path", "", "defines path to logging file")
+	debug := flag.Bool("debug", true, "defines debug mode")
+	strictMode := flag.Bool("strict", false, "defines strictness of the logs")
+
+	flag.Parse()
+
+	return *logsPath, *debug, *strictMode
 }

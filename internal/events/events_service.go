@@ -8,7 +8,8 @@ import (
 
 	"github.com/sonyamoonglade/notification-service/internal/entity"
 	"github.com/sonyamoonglade/notification-service/internal/events/payload"
-	"github.com/sonyamoonglade/notification-service/pkg/httpErrors"
+	"github.com/sonyamoonglade/notification-service/internal/storage"
+	"github.com/sonyamoonglade/notification-service/pkg/http_errors"
 	"github.com/sonyamoonglade/notification-service/pkg/template"
 
 	"go.uber.org/zap"
@@ -24,20 +25,20 @@ type Service interface {
 }
 
 type eventService struct {
-	eventStorage     Storage
+	storage          storage.DBStorage
 	logger           *zap.SugaredLogger
 	templateProvider template.Provider
 }
 
-func NewEventsService(logger *zap.SugaredLogger, storage Storage, templateProvider template.Provider) Service {
-	return &eventService{logger: logger, eventStorage: storage, templateProvider: templateProvider}
+func NewEventsService(logger *zap.SugaredLogger, storage storage.DBStorage, templateProvider template.Provider) Service {
+	return &eventService{logger: logger, storage: storage, templateProvider: templateProvider}
 }
 
 func (s *eventService) GetAvailableEvents(ctx context.Context) ([]*entity.Event, error) {
-	return s.eventStorage.GetAvailableEvents(ctx)
+	return s.storage.GetAvailableEvents(ctx)
 }
 func (s *eventService) RegisterEvent(ctx context.Context, e entity.Event) error {
-	return s.eventStorage.RegisterEvent(ctx, e)
+	return s.storage.RegisterEvent(ctx, e)
 }
 
 func (s *eventService) ReadEvents(ctx context.Context) error {
@@ -96,12 +97,12 @@ func (s *eventService) ReadEvents(ctx context.Context) error {
 }
 
 func (s *eventService) DoesExist(ctx context.Context, eventName string) (uint64, error) {
-	eventID, err := s.eventStorage.DoesExist(ctx, eventName)
+	eventID, err := s.storage.DoesExist(ctx, eventName)
 	if err != nil {
 		return 0, err
 	}
 	if eventID == 0 {
-		return 0, httpErrors.NewErrEventDoesNotExist(eventName)
+		return 0, http_errors.NewErrEventDoesNotExist(eventName)
 	}
 	return eventID, nil
 }

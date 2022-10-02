@@ -1,0 +1,17 @@
+version: "3.8"
+
+
+services:
+  notification-service:
+    build:
+      context: "../"
+      dockerfile: "./docker/dev.Dockerfile"
+    restart: on-failure
+    environment:
+        - DATABASE_URL
+        - BOT_TOKEN
+        - ENV
+    volumes:
+      - ../:/app
+    ports:
+      - "9900:9900"

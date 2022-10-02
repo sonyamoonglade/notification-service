@@ -51,10 +51,10 @@ func (p *Provider) MustGetType(eventID uint64) reflect.Type {
 	See events.json
 */
 type MasterOrderCreatePayload struct {
-	OrderID        int64  `json:"order_id" validate:"required"`
-	TotalCartPrice int64  `json:"total_cart_price" validate:"required"`
-	Username       string `json:"username" validate:"required"`
-	PhoneNumber    string `json:"phone_number" validate:"required"`
+	OrderID     int64  `json:"order_id" validate:"required"`
+	Amount      int64  `json:"amount" validate:"required"`
+	Username    string `json:"username" validate:"required"`
+	PhoneNumber string `json:"phone_number" validate:"required"`
 }
 
 /*
@@ -74,6 +74,6 @@ type WorkerLoginPayload struct {
 	See events.json
 */
 type UserOrderCreatePayload struct {
-	OrderID        int64 `json:"order_id" validate:"required"`
-	TotalCartPrice int64 `json:"total_cart_price" validate:"required"`
+	OrderID int64 `json:"order_id" validate:"required"`
+	Amount  int64 `json:"amount" validate:"required"`
 }
